@@ -25,8 +25,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .coin-change{font-size:13px;padding:2px 8px;border-radius:6px;font-weight:600}
 .change-up{background:rgba(63,185,80,0.15);color:var(--green)}
 .change-down{background:rgba(248,81,73,0.15);color:var(--red)}
-.delete-btn{position:absolute;top:10px;right:10px;background:transparent;border:none;color:#6e7681;font-size:18px;cursor:pointer;padding:4px 8px}
-.delete-btn:active{color:var(--red)}
+.delete-btn{position:absolute;top:10px;right:10px;background:transparent;border:none;color:#6e7681;font-size:20px;cursor:pointer;padding:6px 10px;z-index:10;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.delete-btn:active{color:var(--red);transform:scale(0.9)}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
 .metric{background:#21262d;padding:10px;border-radius:8px;text-align:center}
 .metric-label{font-size:11px;color:#8b949e;margin-bottom:4px}
@@ -51,6 +51,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .volume-spike{color:var(--yellow);font-weight:700}
 .error-msg{color:var(--red);padding:10px;font-size:14px}
 .api-status{padding:8px 14px;background:#21262d;border-radius:8px;margin-bottom:12px;font-size:12px;display:flex;justify-content:space-between;align-items:center}
+.swipe-hint{font-size:11px;color:#6e7681;text-align:center;margin-bottom:8px}
 </style>
 </head>
 <body>
@@ -62,33 +63,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </div>
 
 <div class="add-box"><input type="text" id="coinInput" placeholder="輸入幣種，如 BTC、ETH、PEPE" onkeypress="if(event.key==='Enter') addCoin()"><button onclick="addCoin()">➕ 加入監控</button></div>
+<div class="swipe-hint">👆 點幣種卡片右上角的 ✕ 刪除 | 左滑也可刪除</div>
 <div id="coinList"></div>
 <div class="last-update" id="lastUpdate"></div>
 
 <script>
-// ===== API 配置（支援多種來源自動切換）=====
-const API_CONFIG = {
-  // 嘗試直接連接 WEEX
-  weex: {
-    base: 'https://api-spot.weex.com',
-    ticker: (sym) => `/api/v3/market/ticker/24hr?symbols=${sym}`,
-    depth: (sym) => `/api/v3/market/depth?symbol=${sym}&limit=20`,
-  },
-  // CORS Proxy 備援
-  corsProxy: {
-    base: 'https://corsproxy.io/?',
-    ticker: (sym) => `https://api-spot.weex.com/api/v3/market/ticker/24hr?symbols=${sym}`,
-    depth: (sym) => `https://api-spot.weex.com/api/v3/market/depth?symbol=${sym}&limit=20`,
-  },
-  // 另一個 CORS Proxy
-  corsProxy2: {
-    base: '',
-    ticker: (sym) => `https://api.allorigins.win/raw?url=https://api-spot.weex.com/api/v3/market/ticker/24hr?symbols=${sym}`,
-    depth: (sym) => `https://api.allorigins.win/raw?url=https://api-spot.weex.com/api/v3/market/depth?symbol=${sym}&limit=20`,
-  }
-};
-
-let currentApi = 'weex';
+// ===== API 配置（v1 + v3 雙保險）=====
+const API_V3 = 'https://api-spot.weex.com';
+const API_V1 = 'https://api.weex.com/api/spot/v1';
+let currentApi = 'v3';
 let apiWorking = false;
 const COINS = [];
 const COIN_DATA = {};
@@ -109,142 +92,132 @@ async function testApiConnection(){
   const statusEl = document.getElementById('apiStatus');
   const modeEl = document.getElementById('apiMode');
   
-  // 先測試直接連接
+  // 測試 v3
   try{
-    const res = await fetch('https://api-spot.weex.com/api/v3/ping', {method:'GET', mode:'cors'});
+    const res = await fetch(`${API_V3}/api/v3/ping`, {method:'GET', mode:'cors'});
     if(res.ok){
-      apiWorking = true;
-      currentApi = 'weex';
-      statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--green)">WEEX 直連正常</span></span>';
-      modeEl.textContent = '直連模式';
-      return;
+      apiWorking = true; currentApi = 'v3';
+      statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--green)">WEEX v3 直連正常</span></span>';
+      modeEl.textContent = 'v3直連'; return;
     }
   }catch(e){}
   
-  // 測試 CORS Proxy
+  // 測試 v1
   try{
-    const res = await fetch('https://corsproxy.io/?https://api-spot.weex.com/api/v3/ping', {method:'GET'});
-    if(res.ok){
-      apiWorking = true;
-      currentApi = 'corsProxy';
-      statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--yellow)">CORS Proxy 模式</span></span>';
-      modeEl.textContent = 'Proxy模式';
-      return;
+    const res = await fetch(`${API_V1}/public/time`, {method:'GET', mode:'cors'});
+    const json = await res.json();
+    if(json.code === '00000'){
+      apiWorking = true; currentApi = 'v1';
+      statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--green)">WEEX v1 直連正常</span></span>';
+      modeEl.textContent = 'v1直連'; return;
     }
   }catch(e){}
   
-  // 測試 allorigins
-  try{
-    const res = await fetch('https://api.allorigins.win/raw?url=https://api-spot.weex.com/api/v3/ping', {method:'GET'});
-    if(res.ok){
-      apiWorking = true;
-      currentApi = 'corsProxy2';
-      statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--yellow)">AllOrigins Proxy 模式</span></span>';
-      modeEl.textContent = 'Proxy模式';
-      return;
-    }
-  }catch(e){}
-  
-  statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--red)">連線失敗，使用離線模擬</span></span>';
+  statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--red)">連線失敗，使用模擬數據</span></span>';
   modeEl.textContent = '模擬模式';
   apiWorking = false;
 }
 
-function getApiUrl(type, symbol){
-  const cfg = API_CONFIG[currentApi];
-  if(currentApi === 'weex'){
-    return cfg.base + cfg[type](symbol);
-  }else if(currentApi === 'corsProxy'){
-    return cfg.base + encodeURIComponent(cfg[type](symbol));
-  }else{
-    return cfg[type](symbol);
+// v3 Ticker
+async function fetchTickerV3(symbol){
+  const res = await fetch(`${API_V3}/api/v3/market/ticker/24hr?symbols=${symbol}`);
+  const json = await res.json();
+  if(Array.isArray(json) && json.length > 0){
+    const d = json[0];
+    const last = parseFloat(d.lastPrice || d.last || 0);
+    const open = parseFloat(d.openPrice || d.open || last);
+    return {last, open, vol: parseFloat(d.volume || d.baseVolume || 0), high: parseFloat(d.highPrice || d.high || last), low: parseFloat(d.lowPrice || d.low || last), bid: parseFloat(d.bidPrice || d.bid || last*0.999), ask: parseFloat(d.askPrice || d.ask || last*1.001)};
   }
-}
-
-// 獲取 Ticker
-async function fetchTicker(symbol){
-  try{
-    const url = getApiUrl('ticker', symbol);
-    const res = await fetch(url);
-    const json = await res.json();
-    
-    // 處理 CORS proxy 包裝的響應
-    let data = json;
-    if(currentApi !== 'weex' && json.contents){
-      data = JSON.parse(json.contents);
-    }
-    
-    if(data && Array.isArray(data) && data.length > 0){
-      const d = data[0];
-      const last = parseFloat(d.lastPrice || d.last || 0);
-      const open = parseFloat(d.openPrice || d.open || d.openPrice24h || last);
-      const change = open > 0 ? ((last - open) / open * 100) : 0;
-      const vol = parseFloat(d.volume || d.baseVolume || d.quoteVolume || 0);
-      const high = parseFloat(d.highPrice || d.high || d.highPrice24h || last);
-      const low = parseFloat(d.lowPrice || d.low || d.lowPrice24h || last);
-      return {
-        symbol,
-        price: last.toFixed(getDecimals(symbol)),
-        changePct: change.toFixed(2),
-        volume: (vol/1000000).toFixed(2)+'M',
-        volumeRaw: vol,
-        high: high.toFixed(getDecimals(symbol)),
-        low: low.toFixed(getDecimals(symbol)),
-        bid: parseFloat(d.bidPrice || d.bid || last*0.999).toFixed(getDecimals(symbol)),
-        ask: parseFloat(d.askPrice || d.ask || last*1.001).toFixed(getDecimals(symbol)),
-        timestamp: Date.now()
-      };
-    }else if(data && data.code === '00000' && data.data){
-      // 舊版格式
-      const d = data.data;
-      const last = parseFloat(d.last || 0);
-      const open = parseFloat(d.open24h || last);
-      const change = open > 0 ? ((last - open) / open * 100) : 0;
-      return {
-        symbol,
-        price: last.toFixed(getDecimals(symbol)),
-        changePct: change.toFixed(2),
-        volume: (parseFloat(d.baseVolume || 0)/1000000).toFixed(2)+'M',
-        volumeRaw: parseFloat(d.baseVolume || 0),
-        high: parseFloat(d.high24h || last).toFixed(getDecimals(symbol)),
-        low: parseFloat(d.low24h || last).toFixed(getDecimals(symbol)),
-        bid: parseFloat(d.bid || last*0.999).toFixed(getDecimals(symbol)),
-        ask: parseFloat(d.ask || last*1.001).toFixed(getDecimals(symbol)),
-        timestamp: Date.now()
-      };
-    }
-  }catch(e){console.error('ticker error:',e)}
   return null;
 }
 
-// 獲取深度
-async function fetchDepth(symbol){
-  try{
-    const url = getApiUrl('depth', symbol);
-    const res = await fetch(url);
-    const json = await res.json();
-    
-    let data = json;
-    if(currentApi !== 'weex' && json.contents){
-      data = JSON.parse(json.contents);
-    }
-    
-    if(data){
-      const bids = data.bids || [];
-      const asks = data.asks || [];
-      const bidSum = bids.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
-      const askSum = asks.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
-      return {
-        bidDepth: bidSum > 0 ? (bidSum/1000000).toFixed(2)+'M' : '--',
-        askDepth: askSum > 0 ? (askSum/1000000).toFixed(2)+'M' : '--',
-        bidSum, askSum
-      };
-    }
-  }catch(e){console.error('depth error:',e)}
-  return {bidDepth:'--',askDepth:'--',bidSum:0,askSum:0};
+// v1 Ticker
+async function fetchTickerV1(symbol){
+  const res = await fetch(`${API_V1}/market/ticker?symbol=${symbol}`);
+  const json = await res.json();
+  if(json.code === '00000' && json.data){
+    const d = json.data;
+    const last = parseFloat(d.last || 0);
+    const open = parseFloat(d.open24h || last);
+    return {last, open, vol: parseFloat(d.baseVolume || 0), high: parseFloat(d.high24h || last), low: parseFloat(d.low24h || last), bid: parseFloat(d.bid || last*0.999), ask: parseFloat(d.ask || last*1.001)};
+  }
+  return null;
 }
 
-// 模擬數據（當 API 全掛時使用）
+// v3 Depth
+async function fetchDepthV3(symbol){
+  const res = await fetch(`${API_V3}/api/v3/market/depth?symbol=${symbol}&limit=20`);
+  const json = await res.json();
+  if(json && json.bids){
+    const bidSum = json.bids.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
+    const askSum = json.asks.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
+    return {bidDepth:(bidSum/1000000).toFixed(2)+'M',askDepth:(askSum/1000000).toFixed(2)+'M',bidSum,askSum};
+  }
+  return null;
+}
+
+// v1 Depth
+async function fetchDepthV1(symbol){
+  const res = await fetch(`${API_V1}/market/depth?symbol=${symbol}&limit=20`);
+  const json = await res.json();
+  if(json.code === '00000' && json.data){
+    const bids = json.data.bids || [];
+    const asks = json.data.asks || [];
+    const bidSum = bids.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
+    const askSum = asks.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
+    return {bidDepth:(bidSum/1000000).toFixed(2)+'M',askDepth:(askSum/1000000).toFixed(2)+'M',bidSum,askSum};
+  }
+  return null;
+}
+
+async function fetchTicker(symbol){
+  if(!apiWorking) return null;
+  try{
+    if(currentApi === 'v3'){
+      const data = await fetchTickerV3(symbol);
+      if(data) return data;
+      // v3 失敗，嘗試 v1
+      currentApi = 'v1';
+      return await fetchTickerV1(symbol);
+    }else{
+      return await fetchTickerV1(symbol);
+    }
+  }catch(e){return null;}
+}
+
+async function fetchDepth(symbol){
+  if(!apiWorking) return null;
+  try{
+    if(currentApi === 'v3'){
+      const data = await fetchDepthV3(symbol);
+      if(data) return data;
+      currentApi = 'v1';
+      return await fetchDepthV1(symbol);
+    }else{
+      return await fetchDepthV1(symbol);
+    }
+  }catch(e){return null;}
+}
+
+function processTickerData(symbol, raw){
+  const last = raw.last;
+  const open = raw.open;
+  const change = open > 0 ? ((last - open) / open * 100) : 0;
+  return {
+    symbol,
+    price: last.toFixed(getDecimals(symbol)),
+    changePct: change.toFixed(2),
+    volume: (raw.vol/1000000).toFixed(2)+'M',
+    volumeRaw: raw.vol,
+    high: raw.high.toFixed(getDecimals(symbol)),
+    low: raw.low.toFixed(getDecimals(symbol)),
+    bid: raw.bid.toFixed(getDecimals(symbol)),
+    ask: raw.ask.toFixed(getDecimals(symbol)),
+    timestamp: Date.now()
+  };
+}
+
+// 模擬數據
 function getMockData(symbol){
   const basePrices = {BTCUSDT:65000,ETHUSDT:3500,DOGEUSDT:0.12,PEPEUSDT:0.000008,AKEUSDT:1.5};
   const base = basePrices[symbol] || 1.5;
@@ -266,7 +239,7 @@ function getMockDepth(){
   return {bidDepth:(bidSum/1000000).toFixed(2)+'M',askDepth:(askSum/1000000).toFixed(2)+'M',bidSum,askSum};
 }
 
-// 拉盤分析引擎
+// 拉盤分析
 function analyze(data, depth){
   const price = parseFloat(data.price);
   const change = parseFloat(data.changePct);
@@ -318,8 +291,8 @@ function renderCard(data, depth, isMock){
   const mockBadge = isMock ? '<span style="font-size:10px;color:var(--yellow);margin-left:6px;">[模擬]</span>' : '';
   
   return `
-  <div class="coin-card" id="card-${data.symbol}">
-    <button class="delete-btn" onclick="removeCoin('${data.symbol}')">✕</button>
+  <div class="coin-card" id="card-${data.symbol}" data-symbol="${data.symbol}">
+    <button class="delete-btn" onclick="event.stopPropagation();removeCoin('${data.symbol}')" ontouchstart="event.stopPropagation()">✕</button>
     <div class="coin-header">
       <div>
         <div class="coin-name">${data.symbol}${mockBadge}</div>
@@ -357,11 +330,14 @@ async function updateDisplay(){
     let ticker, depth, isMock = false;
     
     if(apiWorking){
-      ticker = await fetchTicker(sym);
-      depth = ticker ? await fetchDepth(sym) : {bidDepth:'--',askDepth:'--',bidSum:0,askSum:0};
+      const raw = await fetchTicker(sym);
+      if(raw){
+        ticker = processTickerData(sym, raw);
+        const rawDepth = await fetchDepth(sym);
+        depth = rawDepth || {bidDepth:'--',askDepth:'--',bidSum:0,askSum:0};
+      }
     }
     
-    // 如果 API 失敗，使用模擬數據
     if(!ticker){
       ticker = getMockData(sym);
       depth = getMockDepth();
@@ -388,8 +364,13 @@ function addCoin(){
 }
 
 function removeCoin(sym){
+  if(!confirm(`確定要刪除 ${sym} 嗎？`)) return;
   const i = COINS.indexOf(sym);
-  if(i>-1){COINS.splice(i,1);saveCoins();updateDisplay();}
+  if(i>-1){
+    COINS.splice(i,1);
+    saveCoins();
+    updateDisplay();
+  }
 }
 
 // 啟動
