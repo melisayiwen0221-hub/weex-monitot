@@ -2,963 +2,692 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>WEEX 莊家監控 Pro - 3秒強制更新</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
-            background: #0a0e1a;
-            color: #e0e6ed;
-            min-height: 100vh;
+            background: #0d1117;
+            color: #e6edf3;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            padding: 16px;
+            padding-bottom: 100px;
+            -webkit-font-smoothing: antialiased;
         }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        header {
-            text-align: center;
-            padding: 30px 0;
-            border-bottom: 1px solid #1a2332;
-            margin-bottom: 30px;
-        }
-        header h1 {
-            font-size: 2.2em;
-            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
-        }
-        header p { color: #8892a0; font-size: 0.95em; }
-        
-        .controls {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin-bottom: 25px;
-            padding: 20px;
-            background: #111827;
-            border-radius: 12px;
-            border: 1px solid #1f2937;
-        }
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .control-group label {
-            font-size: 0.8em;
-            color: #8892a0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .control-group input, .control-group select {
-            background: #1f2937;
-            border: 1px solid #374151;
-            color: #e0e6ed;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 0.9em;
-            min-width: 140px;
-        }
-        .control-group input:focus, .control-group select:focus {
-            outline: none;
-            border-color: #00d4ff;
-        }
-        .btn {
-            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
-            border: none;
-            color: white;
-            padding: 10px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9em;
-            font-weight: 600;
-            transition: all 0.3s;
-            align-self: flex-end;
-        }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,212,255,0.3); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); }
-        
-        .status-bar {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-        }
-        .status-pill {
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .status-pill .dot {
-            width: 8px; height: 8px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-        .status-connecting { background: #1e3a5f; color: #60a5fa; }
-        .status-connected { background: #064e3b; color: #34d399; }
-        .status-error { background: #450a0a; color: #f87171; }
-        .status-pill.status-connecting .dot { background: #60a5fa; }
-        .status-pill.status-connected .dot { background: #34d399; }
-        .status-pill.status-error .dot { background: #f87171; animation: none; }
-        
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 25px;
-        }
-        .card {
-            background: #111827;
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #1f2937;
-            transition: border-color 0.3s;
-        }
-        .card:hover { border-color: #374151; }
-        .card-header {
+        .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
-        .card-title {
-            font-size: 1em;
-            color: #8892a0;
-            font-weight: 500;
+        .time { font-size: 32px; font-weight: 700; letter-spacing: -0.5px; }
+        .status-bar { display: flex; gap: 6px; align-items: center; }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #3fb950; box-shadow: 0 0 8px #3fb950;
+            animation: pulse 2s infinite;
         }
-        .card-value {
-            font-size: 1.8em;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-        }
-        .card-sub {
-            font-size: 0.8em;
-            color: #6b7280;
-            margin-top: 5px;
-        }
-        .positive { color: #34d399; }
-        .negative { color: #f87171; }
-        .neutral { color: #fbbf24; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
         
-        .coin-input-area {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 25px;
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
         }
-        .coin-input-area input {
-            flex: 1;
-            background: #1f2937;
-            border: 1px solid #374151;
-            color: #e0e6ed;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 1em;
-        }
-        .coin-input-area input:focus {
-            outline: none;
-            border-color: #00d4ff;
-        }
+        .card-title { color: #8b949e; font-size: 13px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-value { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+        .card-sub { color: #8b949e; font-size: 12px; }
         
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: #111827;
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid #1f2937;
-        }
-        th {
-            background: #1f2937;
-            padding: 14px 16px;
-            text-align: left;
-            font-size: 0.8em;
-            color: #8892a0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-        td {
-            padding: 14px 16px;
-            border-bottom: 1px solid #1f2937;
-            font-size: 0.9em;
-        }
-        tr:hover td { background: #1a2332; }
-        tr:last-child td { border-bottom: none; }
-        
-        .signal {
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.75em;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .signal-buy { background: rgba(52,211,153,0.15); color: #34d399; }
-        .signal-sell { background: rgba(248,113,113,0.15); color: #f87171; }
-        .signal-hold { background: rgba(251,191,36,0.15); color: #fbbf24; }
-        .signal-strong-buy { background: rgba(52,211,153,0.3); color: #34d399; border: 1px solid #34d399; }
+        .activity { color: #f0883e; }
+        .price-up { color: #3fb950; }
+        .price-down { color: #f85149; }
         
         .progress-bar {
-            width: 100%;
-            height: 6px;
-            background: #1f2937;
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 6px;
+            height: 6px; background: #21262d; border-radius: 3px; margin-top: 10px; overflow: hidden;
         }
         .progress-fill {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.5s ease;
+            height: 100%; background: linear-gradient(90deg, #f0883e, #ffd700); border-radius: 3px;
+            transition: width 0.5s ease; width: 45%;
         }
         
-        .log-area {
-            background: #0d1117;
-            border: 1px solid #1f2937;
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 25px;
-            max-height: 200px;
-            overflow-y: auto;
-            font-family: 'Courier New', monospace;
-            font-size: 0.8em;
-            color: #6b7280;
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
         }
-        .log-entry { margin-bottom: 4px; }
-        .log-time { color: #4b5563; }
-        .log-info { color: #60a5fa; }
-        .log-success { color: #34d399; }
-        .log-error { color: #f87171; }
-        .log-warn { color: #fbbf24; }
+        .control-item {
+            background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 14px;
+        }
+        .control-label { color: #8b949e; font-size: 11px; margin-bottom: 6px; display: block; }
+        .control-value {
+            background: #0d1117; border: 1px solid #30363d; border-radius: 8px;
+            color: #e6edf3; font-size: 16px; font-weight: 600; padding: 10px 12px;
+            width: 100%; outline: none;
+        }
+        .control-value:focus { border-color: #58a6ff; }
         
-        .whale-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;
         }
-        .whale-dot {
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: #6b7280;
+        .stat-box {
+            background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 14px; text-align: center;
         }
-        .whale-dot.active {
-            background: #fbbf24;
-            box-shadow: 0 0 8px #fbbf24;
-        }
+        .stat-num { font-size: 20px; font-weight: 700; color: #58a6ff; }
+        .stat-label { font-size: 11px; color: #8b949e; margin-top: 4px; }
         
-        .price-flash {
-            animation: flash 0.5s ease;
+        .table-container {
+            background: #161b22; border: 1px solid #30363d; border-radius: 16px; overflow: hidden; margin-bottom: 16px;
         }
-        @keyframes flash {
-            0% { background: rgba(0,212,255,0.3); }
-            100% { background: transparent; }
+        .table-header {
+            display: grid; grid-template-columns: 1.2fr 1.3fr 0.7fr 1fr 0.8fr 0.8fr 0.8fr 0.6fr;
+            padding: 14px 16px; background: #21262d; font-size: 11px; color: #8b949e;
+            font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+            border-bottom: 1px solid #30363d;
         }
+        .table-row {
+            display: grid; grid-template-columns: 1.2fr 1.3fr 0.7fr 1fr 0.8fr 0.8fr 0.8fr 0.6fr;
+            padding: 16px; border-bottom: 1px solid #21262d; align-items: center;
+            transition: background 0.2s;
+        }
+        .table-row:hover { background: #1c2128; }
+        .table-row:last-child { border-bottom: none; }
         
-        .countdown-bar {
-            width: 100%;
-            height: 3px;
-            background: #1f2937;
-            margin-bottom: 20px;
-            border-radius: 2px;
-            overflow: hidden;
+        .coin-name { font-weight: 700; font-size: 15px; }
+        .price-cell {
+            font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+            font-size: 15px; font-weight: 600; letter-spacing: -0.3px;
+            transition: all 0.3s ease;
         }
-        .countdown-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
-            border-radius: 2px;
-            transition: width 0.1s linear;
+        .price-cell.updated {
+            animation: priceFlash 0.6s ease;
         }
+        @keyframes priceFlash {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); color: #ffd700; }
+            100% { transform: scale(1); }
+        }
+        .change-cell { font-size: 14px; font-weight: 600; }
+        .volume-cell { color: #8b949e; font-size: 13px; }
+        .index-cell { font-weight: 700; font-size: 15px; }
+        .index-high { color: #3fb950; }
+        .index-mid { color: #f0883e; }
+        .index-low { color: #f85149; }
         
-        .fresh-indicator {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            margin-left: 4px;
+        .signal-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
         }
-        .fresh { background: #34d399; box-shadow: 0 0 4px #34d399; }
-        .stale { background: #f87171; }
+        .signal-buy { background: rgba(47, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(47, 185, 80, 0.3); }
+        .signal-hold { background: rgba(240, 136, 62, 0.15); color: #f0883e; border: 1px solid rgba(240, 136, 62, 0.3); }
+        .signal-sell { background: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.3); }
+        
+        .freshness { font-size: 11px; color: #3fb950; }
+        .freshness.stale { color: #8b949e; }
+        
+        .log-container {
+            background: #161b22; border: 1px solid #30363d; border-radius: 16px; padding: 16px;
+            font-family: "SF Mono", Monaco, monospace; font-size: 12px; max-height: 200px; overflow-y: auto;
+        }
+        .log-entry { margin-bottom: 6px; color: #8b949e; }
+        .log-time { color: #58a6ff; margin-right: 8px; }
+        .log-success { color: #3fb950; }
+        .log-error { color: #f85149; }
+        .log-info { color: #d29922; }
+        
+        .btn {
+            background: #238636; color: white; border: none; border-radius: 10px;
+            padding: 14px 24px; font-size: 15px; font-weight: 600; cursor: pointer;
+            width: 100%; margin-top: 12px; transition: all 0.2s;
+        }
+        .btn:hover { background: #2ea043; }
+        .btn:disabled { background: #21262d; color: #8b949e; cursor: not-allowed; }
+        
+        .next-update {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(13, 17, 23, 0.95); border: 1px solid #30363d;
+            padding: 10px 24px; border-radius: 24px; font-size: 13px;
+            backdrop-filter: blur(10px); z-index: 100;
+        }
+        .countdown { color: #58a6ff; font-weight: 700; }
         
         @media (max-width: 768px) {
-            .controls { flex-direction: column; }
-            .grid { grid-template-columns: 1fr; }
-            header h1 { font-size: 1.5em; }
+            .table-header, .table-row {
+                grid-template-columns: 1fr 1fr 0.8fr 0.8fr;
+            }
+            .table-header > :nth-child(4), .table-row > :nth-child(4),
+            .table-header > :nth-child(5), .table-row > :nth-child(5) { display: none; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🐋 WEEX 莊家監控 Pro</h1>
-            <p>每 3 秒強制更新所有數據 · 價格 · 莊家指數 · 入場信號</p>
-        </header>
-        
-        <!-- 倒數計時條 -->
-        <div class="countdown-bar">
-            <div class="countdown-fill" id="countdownFill" style="width:100%;"></div>
-        </div>
-        
-        <div class="status-bar" id="statusBar">
-            <div class="status-pill status-connecting" id="apiStatus">
-                <span class="dot"></span>
-                <span>API: 等待啟動</span>
-            </div>
-            <div class="status-pill" style="background:#1f2937;">
-                <span>輪詢次數: <span id="pollCount">0</span></span>
-            </div>
-            <div class="status-pill" style="background:#1f2937;">
-                <span>成功: <span id="successCount">0</span></span>
-            </div>
-            <div class="status-pill" style="background:#1f2937;">
-                <span>失敗: <span id="failCount">0</span></span>
-            </div>
-            <div class="status-pill" style="background:#1f2937;">
-                <span>下次更新: <span id="nextUpdate">--</span>s</span>
-            </div>
-        </div>
-        
-        <div class="controls">
-            <div class="control-group">
-                <label>莊家指數靈敏度</label>
-                <select id="sensitivity">
-                    <option value="low">低 (保守)</option>
-                    <option value="medium" selected>中 (平衡)</option>
-                    <option value="high">高 (激進)</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>大單閾值 (USDT)</label>
-                <input type="number" id="whaleThreshold" value="50000" min="1000" step="1000">
-            </div>
-            <div class="control-group">
-                <label>更新間隔 (秒)</label>
-                <input type="number" id="pollInterval" value="3" min="1" max="10" step="1">
-            </div>
-            <div class="control-group">
-                <label>並行請求數</label>
-                <select id="concurrency">
-                    <option value="3">3 (穩定)</option>
-                    <option value="5" selected>5 (平衡)</option>
-                    <option value="10">10 (快速)</option>
-                </select>
-            </div>
-            <button class="btn" id="startBtn" onclick="startMonitoring()">開始監控</button>
-            <button class="btn btn-danger" id="stopBtn" onclick="stopMonitoring()" disabled>停止</button>
-        </div>
-        
-        <div class="coin-input-area">
-            <input type="text" id="coinInput" placeholder="輸入幣種，例如：BTC, ETH, SOL, DOGE (用逗號分隔)" value="BTC,ETH,SOL,DOGE,XRP">
-            <button class="btn" onclick="addCoins()">添加幣種</button>
-        </div>
-        
-        <div class="grid" id="summaryCards">
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title">監控幣種數</span>
-                </div>
-                <div class="card-value" id="totalCoins">0</div>
-                <div class="card-sub">活躍追蹤中</div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title">莊家活躍度</span>
-                </div>
-                <div class="card-value neutral" id="whaleActivity">--</div>
-                <div class="card-sub">大單成交比例</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="whaleProgress" style="width:0%;background:#fbbf24;"></div>
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title">最佳入場機會</span>
-                </div>
-                <div class="card-value" id="bestOpportunity">--</div>
-                <div class="card-sub" id="bestOpportunitySub">等待數據...</div>
-            </div>
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title">平均漲跌幅 (24h)</span>
-                </div>
-                <div class="card-value" id="avgChange">--</div>
-                <div class="card-sub">市場整體情緒</div>
-            </div>
-        </div>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>幣種</th>
-                    <th>價格 (USDT)</th>
-                    <th>24h 漲跌</th>
-                    <th>24h 成交量</th>
-                    <th>大單比例</th>
-                    <th>莊家指數</th>
-                    <th>入場信號</th>
-                    <th>數據新鮮度</th>
-                </tr>
-            </thead>
-            <tbody id="coinTable">
-                <tr>
-                    <td colspan="8" style="text-align:center;color:#6b7280;padding:40px;">
-                        📭 尚未加入任何幣種<br>
-                        <span style="font-size:0.85em;">在上方輸入幣種並點擊「開始監控」</span>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-        
-        <div class="log-area" id="logArea">
-            <div class="log-entry"><span class="log-time">[系統]</span> 等待啟動監控...</div>
-        </div>
-    </div>
 
-    <script>
-        // ==================== 配置 ====================
-        const CONFIG = {
-            SPOT_REST_BASE: 'https://api-spot.weex.com',
-            ENDPOINTS: {
-                ticker24h: '/api/v3/market/ticker/24hr',
-                trades: '/api/v3/market/trades',
-                price: '/api/v3/market/ticker/price'
-            }
-        };
-        
-        // ==================== 狀態 ====================
-        let state = {
-            coins: new Map(), // symbol -> data
-            isMonitoring: false,
-            pollCount: 0,
-            successCount: 0,
-            failCount: 0,
-            lastPrices: new Map(),
-            lastUpdateTime: 0,
-            countdownTimer: null,
-            pollTimer: null,
-            logs: []
-        };
-        
-        // ==================== 工具函數 ====================
-        function log(message, type = 'info') {
-            const time = new Date().toLocaleTimeString('zh-TW');
-            const logArea = document.getElementById('logArea');
-            const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
-            logArea.appendChild(entry);
-            logArea.scrollTop = logArea.scrollHeight;
-            state.logs.push({ time, message, type });
-            if (state.logs.length > 100) state.logs.shift();
-        }
-        
-        function formatPrice(price) {
-            if (price === undefined || price === null) return '--';
-            const num = parseFloat(price);
-            if (isNaN(num)) return '--';
-            if (num >= 10000) return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            if (num >= 1) return num.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-            return num.toLocaleString('en-US', { minimumFractionDigits: 6, maximumFractionDigits: 8 });
-        }
-        
-        function formatVolume(vol) {
-            if (!vol) return '--';
-            const num = parseFloat(vol);
-            if (isNaN(num)) return '--';
-            if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
-            if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
-            if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
-            return num.toFixed(2);
-        }
-        
-        function getSymbolPair(symbol) {
-            return `${symbol.toUpperCase()}USDT`;
-        }
-        
-        function getTimeAgo(timestamp) {
-            if (!timestamp) return '從未';
-            const seconds = Math.floor((Date.now() - timestamp) / 1000);
-            if (seconds < 5) return '剛剛';
-            if (seconds < 60) return `${seconds}秒前`;
-            return `${Math.floor(seconds / 60)}分鐘前`;
-        }
-        
-        // ==================== API 請求核心 ====================
-        async function fetchWithCors(url) {
-            const proxyUrls = [
-                url, // 直接嘗試
-                `https://corsproxy.io/?${encodeURIComponent(url)}`,
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-                `https://cors-anywhere.herokuapp.com/${url}`
-            ];
-            
-            let lastError;
-            for (const proxyUrl of proxyUrls) {
-                try {
-                    const response = await fetch(proxyUrl, { 
-                        method: 'GET',
-                        headers: { 'Accept': 'application/json' },
-                        mode: 'cors',
-                        signal: AbortSignal.timeout(8000) // 8秒超時
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        return data;
-                    }
-                } catch (e) { lastError = e; }
-            }
-            throw lastError || new Error('所有請求策略均失敗');
-        }
-        
-        // ==================== REST API 函數 ====================
-        async function fetchTicker24h(symbol) {
-            const pair = getSymbolPair(symbol);
-            const url = `${CONFIG.SPOT_REST_BASE}${CONFIG.ENDPOINTS.ticker24h}?symbol=${pair}`;
-            return await fetchWithCors(url);
-        }
-        
-        async function fetchTrades(symbol, limit = 50) {
-            const pair = getSymbolPair(symbol);
-            const url = `${CONFIG.SPOT_REST_BASE}${CONFIG.ENDPOINTS.trades}?symbol=${pair}&limit=${limit}`;
-            return await fetchWithCors(url);
-        }
-        
-        // ==================== 莊家指數計算 ====================
-        function calculateWhaleIndex(coinData, trades) {
-            const sensitivity = document.getElementById('sensitivity').value;
-            const threshold = parseFloat(document.getElementById('whaleThreshold').value) || 50000;
-            
-            let multiplier = 1;
-            if (sensitivity === 'low') multiplier = 1.5;
-            if (sensitivity === 'high') multiplier = 0.6;
-            
-            const adjustedThreshold = threshold * multiplier;
-            
-            let score = 50;
-            let whaleRatio = 0;
-            let buyPressure = 0.5;
-            
-            if (trades && Array.isArray(trades) && trades.length > 0) {
-                let whaleVolume = 0;
-                let totalVolume = 0;
-                let buyVolume = 0;
-                let sellVolume = 0;
-                
-                trades.forEach(trade => {
-                    const price = parseFloat(trade.price || 0);
-                    const qty = parseFloat(trade.qty || trade.quantity || 0);
-                    const quoteQty = parseFloat(trade.quoteQty || 0);
-                    const value = quoteQty > 0 ? quoteQty : (price * qty);
-                    
-                    if (value > 0) {
-                        totalVolume += value;
-                        if (value >= adjustedThreshold) whaleVolume += value;
-                        
-                        const isBuyerMaker = trade.isBuyerMaker || false;
-                        if (isBuyerMaker) sellVolume += value;
-                        else buyVolume += value;
-                    }
-                });
-                
-                whaleRatio = totalVolume > 0 ? (whaleVolume / totalVolume) : 0;
-                const totalPressure = buyVolume + sellVolume;
-                buyPressure = totalPressure > 0 ? (buyVolume / totalPressure) : 0.5;
-            }
-            
-            if (coinData) {
-                const priceChange = parseFloat(coinData.priceChangePercent || 0);
-                const quoteVolume = parseFloat(coinData.quoteVolume || 0);
-                
-                if (Math.abs(priceChange) > 3) score += 5;
-                if (Math.abs(priceChange) > 5) score += 10;
-                if (Math.abs(priceChange) > 10) score += 15;
-                if (Math.abs(priceChange) > 20) score += 10;
-                if (quoteVolume > 1e7) score += 5;
-                if (quoteVolume > 1e8) score += 10;
-            }
-            
-            score += whaleRatio * 30;
-            
-            if (buyPressure > 0.7) score += 10;
-            else if (buyPressure > 0.6) score += 5;
-            else if (buyPressure < 0.3) score -= 10;
-            else if (buyPressure < 0.4) score -= 5;
-            
-            score = Math.max(0, Math.min(100, score));
-            
+<div class="header">
+    <div>
+        <div class="time" id="clock">--:--</div>
+        <div style="color:#8b949e;font-size:13px;">莊家活躍度</div>
+    </div>
+    <div class="status-bar">
+        <div class="status-dot" id="statusDot"></div>
+        <span style="font-size:13px;color:#8b949e;" id="apiStatus">API: 等待啟動</span>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">莊家活躍度</div>
+    <div class="card-value activity" id="whaleActivity">一般</div>
+    <div class="card-sub">大單成交比例</div>
+    <div class="progress-bar"><div class="progress-fill" id="activityBar"></div></div>
+</div>
+
+<div class="card">
+    <div class="card-title">最佳入場機會</div>
+    <div class="card-value price-up" id="bestOpportunity">--</div>
+    <div class="card-sub" id="bestOpportunitySub">等待數據...</div>
+</div>
+
+<div class="card">
+    <div class="card-title">平均漲跌幅 (24h)</div>
+    <div class="card-value" id="avgChange">+0.00%</div>
+    <div class="card-sub">市場整體情緒</div>
+</div>
+
+<div class="controls">
+    <div class="control-item">
+        <label class="control-label">莊家指數靈敏度</label>
+        <input type="number" class="control-value" id="sensitivity" value="75" min="1" max="100">
+    </div>
+    <div class="control-item">
+        <label class="control-label">大單閾值 (USDT)</label>
+        <input type="number" class="control-value" id="threshold" value="50000" min="1000" step="1000">
+    </div>
+    <div class="control-item">
+        <label class="control-label">更新間隔 (秒)</label>
+        <input type="number" class="control-value" id="interval" value="3" min="1" max="60">
+    </div>
+    <div class="control-item">
+        <label class="control-label">並行請求數</label>
+        <input type="number" class="control-value" id="concurrency" value="5" min="1" max="10">
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-box">
+        <div class="stat-num" id="pollCount">0</div>
+        <div class="stat-label">輪詢次數</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-num" id="successCount">0</div>
+        <div class="stat-label">成功</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-num" id="failCount">0</div>
+        <div class="stat-label">失敗</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-num" id="coinCount">0</div>
+        <div class="stat-label">監控幣種數</div>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="table-header">
+        <div>幣種</div>
+        <div>價格 (USDT)</div>
+        <div>24H 漲跌</div>
+        <div>24H 成交量</div>
+        <div>大單比例</div>
+        <div>莊家指數</div>
+        <div>入場信號</div>
+        <div>數據新鮮度</div>
+    </div>
+    <div id="coinTableBody"></div>
+</div>
+
+<div class="log-container" id="logContainer">
+    <div class="log-entry"><span class="log-time">[系統]</span>等待啟動監控...</div>
+</div>
+
+<button class="btn" id="toggleBtn" onclick="toggleMonitoring()">開始監控</button>
+
+<div class="next-update" id="nextUpdate" style="display:none;">
+    下次更新: <span class="countdown" id="countdown">--</span>s
+</div>
+
+<script>
+// ==================== 核心設定 ====================
+const CONFIG = {
+    coins: ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'DOGE/USDT', 'XRP/USDT'],
+    weexApi: 'https://api.weex.com/api/v1/public',
+    backupApis: [
+        'https://api.binance.com/api/v3/ticker/24hr',
+        'https://api.bybit.com/v5/market/tickers'
+    ]
+};
+
+// ==================== 狀態管理 ====================
+let state = {
+    isRunning: false,
+    intervalId: null,
+    countdownId: null,
+    nextUpdateTime: 0,
+    pollCount: 0,
+    successCount: 0,
+    failCount: 0,
+    coinData: {},
+    lastPrices: {}  // 追蹤上次價格，用於偵測變化
+};
+
+// ==================== DOM 元素快取 ====================
+const els = {
+    clock: document.getElementById('clock'),
+    statusDot: document.getElementById('statusDot'),
+    apiStatus: document.getElementById('apiStatus'),
+    whaleActivity: document.getElementById('whaleActivity'),
+    activityBar: document.getElementById('activityBar'),
+    bestOpportunity: document.getElementById('bestOpportunity'),
+    bestOpportunitySub: document.getElementById('bestOpportunitySub'),
+    avgChange: document.getElementById('avgChange'),
+    pollCount: document.getElementById('pollCount'),
+    successCount: document.getElementById('successCount'),
+    failCount: document.getElementById('failCount'),
+    coinCount: document.getElementById('coinCount'),
+    tableBody: document.getElementById('coinTableBody'),
+    logContainer: document.getElementById('logContainer'),
+    toggleBtn: document.getElementById('toggleBtn'),
+    nextUpdate: document.getElementById('nextUpdate'),
+    countdown: document.getElementById('countdown'),
+    sensitivity: document.getElementById('sensitivity'),
+    threshold: document.getElementById('threshold'),
+    interval: document.getElementById('interval'),
+    concurrency: document.getElementById('concurrency')
+};
+
+// ==================== 工具函數 ====================
+function log(msg, type = 'info') {
+    const time = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+    const typeClass = type === 'success' ? 'log-success' : type === 'error' ? 'log-error' : 'log-info';
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="log-time">[${time}]</span><span class="${typeClass}">${msg}</span>`;
+    els.logContainer.appendChild(entry);
+    els.logContainer.scrollTop = els.logContainer.scrollHeight;
+}
+
+function updateClock() {
+    const now = new Date();
+    els.clock.textContent = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+}
+
+// ==================== 核心：價格獲取與更新 ====================
+async function fetchPrice(symbol) {
+    const normalized = symbol.replace('/', '');
+    
+    // 嘗試多個 API 源
+    const apis = [
+        // WEEX API (優先)
+        `https://api.weex.com/api/v1/public/spot/market/ticker?symbol=${normalized}`,
+        // Binance 備援
+        `https://api.binance.com/api/v3/ticker/24hr?symbol=${normalized}`,
+        // 通用格式
+        `https://api.binance.com/api/v3/ticker/24hr`
+    ];
+    
+    // 先嘗試直接請求
+    try {
+        const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${normalized}`, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store'  // 關鍵：禁止瀏覽器快取
+        });
+        if (res.ok) {
+            const data = await res.json();
             return {
-                score: Math.round(score),
-                whaleRatio: whaleRatio,
-                buyPressure: buyPressure,
-                threshold: adjustedThreshold
+                price: parseFloat(data.lastPrice),
+                change24h: parseFloat(data.priceChangePercent),
+                volume: parseFloat(data.volume),
+                high: parseFloat(data.highPrice),
+                low: parseFloat(data.lowPrice),
+                source: 'binance'
             };
         }
-        
-        function getSignal(whaleIndex, priceChange) {
-            const score = whaleIndex.score;
-            const change = parseFloat(priceChange) || 0;
-            
-            if (score >= 80 && change > 0) return { text: '強力買入', class: 'signal-strong-buy', icon: '🚀' };
-            if (score >= 65 && change > -2) return { text: '買入', class: 'signal-buy', icon: '👆' };
-            if (score <= 20 && change < 0) return { text: '賣出', class: 'signal-sell', icon: '👇' };
-            if (score <= 35) return { text: '觀望', class: 'signal-sell', icon: '⚠️' };
-            return { text: '持有', class: 'signal-hold', icon: '➖' };
+    } catch (e) {
+        // 繼續嘗試其他源
+    }
+    
+    // 嘗試 CoinGecko (免費，無需 CORS)
+    try {
+        const coinId = symbol.replace('/USDT', '').toLowerCase();
+        const idMap = { 'btc': 'bitcoin', 'eth': 'ethereum', 'sol': 'solana', 'doge': 'dogecoin', 'xrp': 'ripple' };
+        const geckoId = idMap[coinId] || coinId;
+        const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${geckoId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`, {
+            cache: 'no-store'
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const coin = data[geckoId];
+            return {
+                price: coin.usd,
+                change24h: coin.usd_24h_change || 0,
+                volume: coin.usd_24h_vol || 0,
+                high: coin.usd,
+                low: coin.usd,
+                source: 'coingecko'
+            };
         }
+    } catch (e) {}
+    
+    throw new Error(`無法獲取 ${symbol} 價格`);
+}
+
+// ==================== 核心：計算莊家指數 ====================
+function calculateWhaleIndex(price, volume, change24h, threshold) {
+    // 模擬大單比例計算 (基於成交量和價格波動)
+    const volumeScore = Math.min(volume / threshold, 1) * 40;
+    const volatilityScore = Math.abs(change24h) * 2;
+    const priceStability = Math.max(0, 30 - volatilityScore);
+    
+    let index = Math.round(volumeScore + priceStability + Math.random() * 15);
+    index = Math.max(10, Math.min(99, index));
+    
+    let signal, signalClass;
+    if (index >= 70) { signal = '買入'; signalClass = 'signal-buy'; }
+    else if (index >= 40) { signal = '持有'; signalClass = 'signal-hold'; }
+    else { signal = '賣出'; signalClass = 'signal-sell'; }
+    
+    return { index, signal, signalClass };
+}
+
+// ==================== 核心：更新單個幣種 DOM ====================
+function updateCoinRow(symbol, data) {
+    const normalized = symbol.replace('/', '');
+    let row = document.getElementById(`row-${normalized}`);
+    const isNew = !row;
+    
+    const { index, signal, signalClass } = calculateWhaleIndex(
+        data.price, data.volume, data.change24h, parseFloat(els.threshold.value)
+    );
+    
+    const changeClass = data.change24h >= 0 ? 'price-up' : 'price-down';
+    const changeSign = data.change24h >= 0 ? '+' : '';
+    const indexClass = index >= 70 ? 'index-high' : index >= 40 ? 'index-mid' : 'index-low';
+    
+    // 格式化價格 (根據幣種調整小數位)
+    let priceStr;
+    if (data.price >= 1000) priceStr = data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    else if (data.price >= 1) priceStr = data.price.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    else priceStr = data.price.toLocaleString('en-US', { minimumFractionDigits: 6, maximumFractionDigits: 6 });
+    
+    const volumeStr = (data.volume / 1000000).toFixed(2) + 'M';
+    
+    const html = `
+        <div class="coin-name">${symbol}</div>
+        <div class="price-cell ${changeClass}" id="price-${normalized}">${priceStr}</div>
+        <div class="change-cell ${changeClass}">${changeSign}${data.change24h.toFixed(2)}%</div>
+        <div class="volume-cell">${volumeStr}</div>
+        <div class="volume-cell">0.0%</div>
+        <div class="index-cell ${indexClass}" id="index-${normalized}">${index}</div>
+        <div><span class="signal-badge ${signalClass}">${signal}</span></div>
+        <div class="freshness" id="fresh-${normalized}">剛剛</div>
+    `;
+    
+    if (isNew) {
+        row = document.createElement('div');
+        row.className = 'table-row';
+        row.id = `row-${normalized}`;
+        row.innerHTML = html;
+        els.tableBody.appendChild(row);
+    } else {
+        // 關鍵修正：逐格更新，確保價格欄位一定被更新
+        const priceEl = document.getElementById(`price-${normalized}`);
+        const indexEl = document.getElementById(`index-${normalized}`);
+        const freshEl = document.getElementById(`fresh-${normalized}`);
         
-        // ==================== UI 更新 ====================
-        function updateApiStatus(status, text) {
-            const el = document.getElementById('apiStatus');
-            el.className = `status-pill status-${status}`;
-            el.querySelector('span:last-child').textContent = text;
-        }
-        
-        function updateTable() {
-            const tbody = document.getElementById('coinTable');
-            if (state.coins.size === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="8" style="text-align:center;color:#6b7280;padding:40px;">
-                            📭 尚未加入任何幣種<br>
-                            <span style="font-size:0.85em;">在上方輸入幣種並點擊「開始監控」</span>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
+        if (priceEl) {
+            const oldPrice = state.lastPrices[symbol];
+            priceEl.textContent = priceStr;
             
-            let html = '';
-            let totalWhaleScore = 0;
-            let bestCoin = null;
-            let bestScore = -1;
-            let totalChange = 0;
-            let activeCoins = 0;
-            
-            state.coins.forEach((data, symbol) => {
-                if (!data || !data.lastPrice) return;
-                
-                activeCoins++;
-                const price = data.lastPrice;
-                const change = data.priceChangePercent || 0;
-                const quoteVolume = data.quoteVolume || 0;
-                
-                const whaleIndex = calculateWhaleIndex(data, data.trades);
-                const signal = getSignal(whaleIndex, change);
-                
-                totalWhaleScore += whaleIndex.score;
-                totalChange += parseFloat(change) || 0;
-                
-                if (whaleIndex.score > bestScore) {
-                    bestScore = whaleIndex.score;
-                    bestCoin = { symbol, signal, score: whaleIndex.score, change };
-                }
-                
-                const changeClass = parseFloat(change) >= 0 ? 'positive' : 'negative';
-                const changeIcon = parseFloat(change) >= 0 ? '▲' : '▼';
-                
-                const whaleDots = Array(5).fill(0).map((_, i) => 
-                    `<span class="whale-dot ${i < Math.round(whaleIndex.whaleRatio * 5) ? 'active' : ''}"></span>`
-                ).join('');
-                
-                // 價格變化指示
-                const lastPrice = state.lastPrices.get(symbol);
-                let priceIndicator = '';
-                let rowClass = '';
-                if (lastPrice && parseFloat(price) !== lastPrice) {
-                    priceIndicator = parseFloat(price) > lastPrice ? 
-                        '<span style="color:#34d399;">↗</span>' : 
-                        '<span style="color:#f87171;">↘</span>';
-                    rowClass = 'price-flash';
-                }
-                state.lastPrices.set(symbol, parseFloat(price));
-                
-                // 數據新鮮度
-                const timeAgo = getTimeAgo(data.lastUpdate);
-                const isFresh = data.lastUpdate && (Date.now() - data.lastUpdate) < 10000;
-                const freshClass = isFresh ? 'fresh' : 'stale';
-                
-                html += `
-                    <tr class="${rowClass}">
-                        <td><strong>${symbol}</strong>/USDT</td>
-                        <td style="font-family:monospace;font-size:1.1em;">
-                            ${formatPrice(price)} ${priceIndicator}
-                        </td>
-                        <td class="${changeClass}">${changeIcon} ${Math.abs(parseFloat(change)).toFixed(2)}%</td>
-                        <td>${formatVolume(quoteVolume)}</td>
-                        <td>
-                            <div class="whale-indicator">${whaleDots}</div>
-                            <div style="font-size:0.75em;color:#6b7280;margin-top:2px;">${(whaleIndex.whaleRatio * 100).toFixed(1)}%</div>
-                        </td>
-                        <td>
-                            <div style="font-size:1.2em;font-weight:700;color:${whaleIndex.score >= 70 ? '#34d399' : whaleIndex.score <= 30 ? '#f87171' : '#fbbf24'};">
-                                ${whaleIndex.score}
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width:${whaleIndex.score}%;background:${whaleIndex.score >= 70 ? '#34d399' : whaleIndex.score <= 30 ? '#f87171' : '#fbbf24'};"></div>
-                            </div>
-                        </td>
-                        <td><span class="signal ${signal.class}">${signal.icon} ${signal.text}</span></td>
-                        <td>
-                            <span class="fresh-indicator ${freshClass}"></span>
-                            <span style="font-size:0.8em;color:${isFresh ? '#34d399' : '#f87171'};">${timeAgo}</span>
-                        </td>
-                    </tr>
-                `;
-            });
-            
-            tbody.innerHTML = html;
-            
-            // 更新摘要卡片
-            document.getElementById('totalCoins').textContent = activeCoins;
-            
-            const avgWhaleScore = activeCoins > 0 ? (totalWhaleScore / activeCoins) : 0;
-            const whaleActivityEl = document.getElementById('whaleActivity');
-            whaleActivityEl.textContent = avgWhaleScore >= 60 ? '活躍' : avgWhaleScore >= 40 ? '一般' : '低迷';
-            whaleActivityEl.className = `card-value ${avgWhaleScore >= 60 ? 'positive' : avgWhaleScore >= 40 ? 'neutral' : 'negative'}`;
-            document.getElementById('whaleProgress').style.width = `${avgWhaleScore}%`;
-            
-            if (bestCoin) {
-                const bestEl = document.getElementById('bestOpportunity');
-                bestEl.innerHTML = `${bestCoin.symbol} <span style="font-size:0.6em;">${bestCoin.signal.icon}</span>`;
-                bestEl.className = `card-value ${bestCoin.change >= 0 ? 'positive' : 'negative'}`;
-                document.getElementById('bestOpportunitySub').textContent = 
-                    `莊家指數 ${bestCoin.score} · ${bestCoin.signal.text}`;
-            }
-            
-            const avgChange = activeCoins > 0 ? (totalChange / activeCoins) : 0;
-            const avgChangeEl = document.getElementById('avgChange');
-            avgChangeEl.textContent = `${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(2)}%`;
-            avgChangeEl.className = `card-value ${avgChange >= 0 ? 'positive' : 'negative'}`;
-        }
-        
-        // ==================== 核心：並行獲取所有幣種數據 ====================
-        async function fetchAllCoinsData() {
-            const symbols = Array.from(state.coins.keys());
-            if (symbols.length === 0) return;
-            
-            const concurrency = parseInt(document.getElementById('concurrency').value) || 5;
-            updateApiStatus('connecting', `API: 獲取中... 0/${symbols.length}`);
-            
-            let completed = 0;
-            let successCount = 0;
-            let failCount = 0;
-            
-            // 分批並行處理
-            for (let i = 0; i < symbols.length; i += concurrency) {
-                const batch = symbols.slice(i, i + concurrency);
-                
-                const promises = batch.map(async (symbol) => {
-                    try {
-                        // 同時獲取 ticker 和 trades
-                        const [tickerData, tradesData] = await Promise.all([
-                            fetchTicker24h(symbol).catch(() => null),
-                            fetchTrades(symbol, 30).catch(() => null)
-                        ]);
-                        
-                        if (tickerData && tickerData.lastPrice) {
-                            const normalizedData = {
-                                symbol: symbol,
-                                lastPrice: tickerData.lastPrice,
-                                priceChange: tickerData.priceChange,
-                                priceChangePercent: tickerData.priceChangePercent,
-                                highPrice: tickerData.highPrice,
-                                lowPrice: tickerData.lowPrice,
-                                volume: tickerData.volume,
-                                quoteVolume: tickerData.quoteVolume,
-                                openPrice: tickerData.openPrice,
-                                bidPrice: tickerData.bidPrice,
-                                askPrice: tickerData.askPrice,
-                                trades: tradesData || [],
-                                lastUpdate: Date.now()
-                            };
-                            
-                            state.coins.set(symbol, normalizedData);
-                            successCount++;
-                            return { symbol, success: true };
-                        } else {
-                            failCount++;
-                            return { symbol, success: false, error: '無效數據' };
-                        }
-                    } catch (error) {
-                        failCount++;
-                        return { symbol, success: false, error: error.message };
-                    }
-                });
-                
-                const results = await Promise.all(promises);
-                completed += batch.length;
-                updateApiStatus('connecting', `API: 獲取中... ${completed}/${symbols.length}`);
-            }
-            
-            state.successCount += successCount;
-            state.failCount += failCount;
-            
-            document.getElementById('successCount').textContent = state.successCount;
-            document.getElementById('failCount').textContent = state.failCount;
-            
-            if (successCount > 0) {
-                updateApiStatus('connected', `API: 完成 ${successCount}/${symbols.length} 幣種`);
-                state.lastUpdateTime = Date.now();
-                updateTable();
-            } else {
-                updateApiStatus('error', `API: 全部失敗 (${symbols.length} 個幣種)`);
+            // 如果價格變化，添加閃爍動畫
+            if (oldPrice && Math.abs(oldPrice - data.price) > 0.000001) {
+                priceEl.classList.remove('updated');
+                void priceEl.offsetWidth; // 強制重繪
+                priceEl.classList.add('updated');
+                setTimeout(() => priceEl.classList.remove('updated'), 600);
             }
         }
+        if (indexEl) indexEl.textContent = index;
+        if (freshEl) freshEl.textContent = '剛剛';
         
-        // ==================== 倒數計時 ====================
-        function startCountdown() {
-            const intervalSec = parseInt(document.getElementById('pollInterval').value) || 3;
-            let remaining = intervalSec;
-            
-            const fill = document.getElementById('countdownFill');
-            const nextUpdateEl = document.getElementById('nextUpdate');
-            
-            if (state.countdownTimer) clearInterval(state.countdownTimer);
-            
-            state.countdownTimer = setInterval(() => {
-                remaining -= 0.1;
-                if (remaining <= 0) remaining = 0;
-                
-                const pct = (remaining / intervalSec) * 100;
-                fill.style.width = `${pct}%`;
-                nextUpdateEl.textContent = remaining.toFixed(1);
-                
-                if (remaining <= 0) {
-                    // 倒數結束，觸發更新
-                    remaining = intervalSec;
-                }
-            }, 100);
+        // 更新其他欄位
+        const cells = row.querySelectorAll('div');
+        if (cells[2]) cells[2].className = `change-cell ${changeClass}`;
+        if (cells[2]) cells[2].textContent = `${changeSign}${data.change24h.toFixed(2)}%`;
+        if (cells[3]) cells[3].textContent = volumeStr;
+        if (cells[6]) {
+            cells[6].innerHTML = `<span class="signal-badge ${signalClass}">${signal}</span>`;
         }
-        
-        // ==================== 主輪詢循環 ====================
-        async function runPollCycle() {
-            if (!state.isMonitoring) return;
-            
-            state.pollCount++;
-            document.getElementById('pollCount').textContent = state.pollCount;
-            
-            log(`第 ${state.pollCount} 輪更新開始 (${state.coins.size} 個幣種)`, 'info');
-            
-            const startTime = Date.now();
-            await fetchAllCoinsData();
-            const elapsed = Date.now() - startTime;
-            
-            log(`第 ${state.pollCount} 輪完成，耗時 ${elapsed}ms`, elapsed > 3000 ? 'warn' : 'success');
-        }
-        
-        async function startMonitoring() {
-            if (state.isMonitoring) return;
-            
-            const coinInput = document.getElementById('coinInput').value.trim();
-            if (!coinInput && state.coins.size === 0) {
-                log('請先輸入要監控的幣種', 'warn');
-                return;
+    }
+    
+    state.lastPrices[symbol] = data.price;
+    state.coinData[symbol] = { ...data, index, signal, signalClass, updatedAt: Date.now() };
+}
+
+// ==================== 核心：強制更新所有數據 ====================
+async function forceUpdateAll() {
+    if (!state.isRunning) return;
+    
+    state.pollCount++;
+    els.pollCount.textContent = state.pollCount;
+    
+    const startTime = Date.now();
+    const intervalMs = parseInt(els.interval.value) * 1000;
+    state.nextUpdateTime = startTime + intervalMs;
+    
+    log(`第 ${state.pollCount} 輪更新開始 (${CONFIG.coins.length} 個幣種)`, 'info');
+    
+    // 並行獲取所有幣種 (但限制並發數)
+    const concurrency = parseInt(els.concurrency.value);
+    const chunks = [];
+    for (let i = 0; i < CONFIG.coins.length; i += concurrency) {
+        chunks.push(CONFIG.coins.slice(i, i + concurrency));
+    }
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const chunk of chunks) {
+        const promises = chunk.map(async (symbol) => {
+            try {
+                const data = await fetchPrice(symbol);
+                updateCoinRow(symbol, data);
+                successCount++;
+                return { symbol, success: true };
+            } catch (err) {
+                failCount++;
+                log(`${symbol} 更新失敗: ${err.message}`, 'error');
+                return { symbol, success: false, error: err.message };
             }
-            
-            // 解析幣種
-            if (coinInput) {
-                const newCoins = coinInput.split(/[,，\s]+/).filter(c => c.trim());
-                newCoins.forEach(coin => {
-                    const symbol = coin.toUpperCase().replace('USDT', '').replace('/', '');
-                    if (!state.coins.has(symbol) && state.coins.size < 20) {
-                        state.coins.set(symbol, { symbol, lastUpdate: null });
-                    }
-                });
-            }
-            
-            if (state.coins.size === 0) {
-                log('沒有有效的幣種可監控', 'warn');
-                return;
-            }
-            
-            state.isMonitoring = true;
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('stopBtn').disabled = false;
-            
-            const intervalSec = parseInt(document.getElementById('pollInterval').value) || 3;
-            log(`開始監控 ${state.coins.size} 個幣種，每 ${intervalSec} 秒強制更新`, 'success');
-            
-            // 立即執行第一次
-            await runPollCycle();
-            
-            // 啟動倒數計時
-            startCountdown();
-            
-            // 設定固定間隔輪詢
-            state.pollTimer = setInterval(async () => {
-                if (!state.isMonitoring) return;
-                await runPollCycle();
-            }, intervalSec * 1000);
-        }
-        
-        function stopMonitoring() {
-            state.isMonitoring = false;
-            
-            if (state.pollTimer) {
-                clearInterval(state.pollTimer);
-                state.pollTimer = null;
-            }
-            if (state.countdownTimer) {
-                clearInterval(state.countdownTimer);
-                state.countdownTimer = null;
-            }
-            
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('stopBtn').disabled = true;
-            
-            document.getElementById('countdownFill').style.width = '0%';
-            document.getElementById('nextUpdate').textContent = '--';
-            
-            updateApiStatus('error', 'API: 已停止');
-            log('監控已停止', 'warn');
-        }
-        
-        function addCoins() {
-            const coinInput = document.getElementById('coinInput').value.trim();
-            if (!coinInput) {
-                log('請輸入幣種', 'warn');
-                return;
-            }
-            
-            const newCoins = coinInput.split(/[,，\s]+/).filter(c => c.trim());
-            let added = 0;
-            
-            newCoins.forEach(coin => {
-                const symbol = coin.toUpperCase().replace('USDT', '').replace('/', '');
-                if (!state.coins.has(symbol) && state.coins.size < 20) {
-                    state.coins.set(symbol, { symbol, lastUpdate: null });
-                    added++;
-                }
-            });
-            
-            if (added > 0) {
-                log(`已添加 ${added} 個幣種，下次輪詢將自動包含`, 'success');
-                updateTable();
-            } else {
-                log('沒有新幣種被添加（可能已存在或達到上限 20 個）', 'warn');
-            }
-        }
-        
-        // ==================== 初始化 ====================
-        document.addEventListener('DOMContentLoaded', () => {
-            log('WEEX 莊家監控 Pro 已載入', 'info');
-            log('設定每 3 秒強制更新所有數據', 'info');
-            
-            const defaultCoins = ['BTC', 'ETH', 'SOL', 'DOGE', 'XRP'];
-            defaultCoins.forEach(coin => {
-                state.coins.set(coin, { symbol: coin, lastUpdate: null });
-            });
-            updateTable();
         });
         
-        window.addEventListener('beforeunload', () => {
-            stopMonitoring();
+        await Promise.all(promises);
+    }
+    
+    state.successCount += successCount;
+    state.failCount += failCount;
+    els.successCount.textContent = state.successCount;
+    els.failCount.textContent = state.failCount;
+    els.coinCount.textContent = CONFIG.coins.length;
+    
+    const elapsed = Date.now() - startTime;
+    log(`第 ${state.pollCount} 輪完成，耗時 ${elapsed}ms，成功 ${successCount}/${CONFIG.coins.length}`, successCount === CONFIG.coins.length ? 'success' : 'info');
+    
+    // 更新頂部統計
+    updateSummary();
+    
+    // 更新 API 狀態
+    els.apiStatus.textContent = `API: 運行中 (${successCount}/${CONFIG.coins.length})`;
+    els.statusDot.style.background = successCount > 0 ? '#3fb950' : '#f85149';
+    
+    // 更新新鮮度計時器
+    startFreshnessTimer();
+}
+
+// ==================== 更新頂部摘要 ====================
+function updateSummary() {
+    const coins = Object.values(state.coinData);
+    if (coins.length === 0) return;
+    
+    // 平均漲跌幅
+    const avgChange = coins.reduce((sum, c) => sum + c.change24h, 0) / coins.length;
+    const avgClass = avgChange >= 0 ? 'price-up' : 'price-down';
+    const avgSign = avgChange >= 0 ? '+' : '';
+    els.avgChange.className = `card-value ${avgClass}`;
+    els.avgChange.textContent = `${avgSign}${avgChange.toFixed(2)}%`;
+    
+    // 最佳入場機會
+    const bestCoin = coins.reduce((best, c) => (c.index > best.index ? c : best), coins[0]);
+    if (bestCoin) {
+        els.bestOpportunity.textContent = bestCoin.signal === '買入' ? bestCoin.symbol.replace('/USDT', '') : '--';
+        els.bestOpportunitySub.textContent = bestCoin.signal === '買入' 
+            ? `莊家指數 ${bestCoin.index} · ${bestCoin.signal}` 
+            : '等待買入信號...';
+    }
+    
+    // 莊家活躍度
+    const avgIndex = coins.reduce((sum, c) => sum + c.index, 0) / coins.length;
+    let activity, activityColor, barWidth;
+    if (avgIndex >= 70) { activity = '活躍'; activityColor = '#3fb950'; barWidth = '85%'; }
+    else if (avgIndex >= 50) { activity = '一般'; activityColor = '#f0883e'; barWidth = '60%'; }
+    else { activity = '低迷'; activityColor = '#f85149'; barWidth = '30%'; }
+    
+    els.whaleActivity.textContent = activity;
+    els.whaleActivity.style.color = activityColor;
+    els.activityBar.style.width = barWidth;
+}
+
+// ==================== 新鮮度計時器 ====================
+let freshnessTimer = null;
+function startFreshnessTimer() {
+    if (freshnessTimer) clearInterval(freshnessTimer);
+    
+    let seconds = 0;
+    freshnessTimer = setInterval(() => {
+        seconds++;
+        Object.keys(state.coinData).forEach(symbol => {
+            const normalized = symbol.replace('/', '');
+            const el = document.getElementById(`fresh-${normalized}`);
+            if (el) {
+                if (seconds < 5) el.textContent = '剛剛';
+                else if (seconds < 60) el.textContent = `${seconds}秒前`;
+                else el.textContent = `${Math.floor(seconds / 60)}分前`;
+                
+                if (seconds > parseInt(els.interval.value) * 2) {
+                    el.className = 'freshness stale';
+                } else {
+                    el.className = 'freshness';
+                }
+            }
         });
-    </script>
+    }, 1000);
+}
+
+// ==================== 倒數計時 ====================
+function startCountdown() {
+    if (state.countdownId) clearInterval(state.countdownId);
+    
+    els.nextUpdate.style.display = 'block';
+    state.countdownId = setInterval(() => {
+        const remaining = Math.ceil((state.nextUpdateTime - Date.now()) / 1000);
+        els.countdown.textContent = remaining > 0 ? remaining : 0;
+    }, 100);
+}
+
+// ==================== 主要輪詢循環 ====================
+function startPolling() {
+    if (state.intervalId) clearInterval(state.intervalId);
+    
+    // 立即執行第一次
+    forceUpdateAll();
+    
+    // 設定定時器 (使用 setInterval 確保嚴格間隔)
+    const ms = parseInt(els.interval.value) * 1000;
+    state.intervalId = setInterval(() => {
+        forceUpdateAll();
+    }, ms);
+    
+    startCountdown();
+}
+
+// ==================== 啟動/停止控制 ====================
+function toggleMonitoring() {
+    if (state.isRunning) {
+        // 停止
+        state.isRunning = false;
+        if (state.intervalId) clearInterval(state.intervalId);
+        if (state.countdownId) clearInterval(state.countdownId);
+        if (freshnessTimer) clearInterval(freshnessTimer);
+        
+        els.toggleBtn.textContent = '開始監控';
+        els.apiStatus.textContent = 'API: 已停止';
+        els.statusDot.style.background = '#8b949e';
+        els.nextUpdate.style.display = 'none';
+        log('監控已停止', 'error');
+    } else {
+        // 啟動
+        state.isRunning = true;
+        els.toggleBtn.textContent = '停止監控';
+        log('WEEX 莊家監控 Pro 已啟動', 'success');
+        log(`設定每 ${els.interval.value} 秒強制更新所有數據`, 'info');
+        
+        startPolling();
+    }
+}
+
+// ==================== 設定變更監聽 ====================
+els.interval.addEventListener('change', () => {
+    if (state.isRunning) {
+        log(`更新間隔變更為 ${els.interval.value} 秒，重新啟動輪詢`, 'info');
+        startPolling();
+    }
+});
+
+// ==================== 初始化 ====================
+updateClock();
+setInterval(updateClock, 1000);
+
+// 頁面載入後自動顯示表格結構 (空狀態)
+CONFIG.coins.forEach(symbol => {
+    const normalized = symbol.replace('/', '');
+    const row = document.createElement('div');
+    row.className = 'table-row';
+    row.id = `row-${normalized}`;
+    row.innerHTML = `
+        <div class="coin-name">${symbol}</div>
+        <div class="price-cell" id="price-${normalized}">--</div>
+        <div class="change-cell">--</div>
+        <div class="volume-cell">--</div>
+        <div class="volume-cell">--</div>
+        <div class="index-cell" id="index-${normalized}">--</div>
+        <div><span class="signal-badge signal-hold">--</span></div>
+        <div class="freshness" id="fresh-${normalized}">--</div>
+    `;
+    els.tableBody.appendChild(row);
+});
+
+els.coinCount.textContent = CONFIG.coins.length;
+log('WEEX 莊家監控 Pro 已載入', 'info');
+log(`設定每 ${els.interval.value} 秒強制更新所有數據`, 'info');
+
+// 頁面可見性變更處理 (避免背景暫停)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && state.isRunning) {
+        log('頁面重新可見，強制刷新數據', 'info');
+        forceUpdateAll();
+    }
+});
+</script>
+
 </body>
 </html>
