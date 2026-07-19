@@ -253,6 +253,15 @@
             box-shadow: 0 0 8px #fbbf24;
         }
         
+        .api-test-result {
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 0.85em;
+        }
+        .api-test-success { background: rgba(52,211,153,0.1); border: 1px solid #34d399; color: #34d399; }
+        .api-test-fail { background: rgba(248,113,113,0.1); border: 1px solid #f87171; color: #f87171; }
+        
         @media (max-width: 768px) {
             .controls { flex-direction: column; }
             .grid { grid-template-columns: 1fr; }
@@ -268,16 +277,18 @@
         </header>
         
         <div class="status-bar" id="statusBar">
-            <div class="status-pill status-connecting" id="wsStatus">
+            <div class="status-pill status-connecting" id="apiStatus">
                 <span class="dot"></span>
-                <span>WebSocket: 初始化中...</span>
-            </div>
-            <div class="status-pill status-connecting" id="restStatus">
-                <span class="dot"></span>
-                <span>REST API: 等待中...</span>
+                <span>API: 等待啟動</span>
             </div>
             <div class="status-pill" style="background:#1f2937;">
                 <span>更新次數: <span id="updateCount">0</span></span>
+            </div>
+            <div class="status-pill" style="background:#1f2937;">
+                <span>成功請求: <span id="successCount">0</span></span>
+            </div>
+            <div class="status-pill" style="background:#1f2937;">
+                <span>失敗請求: <span id="failCount">0</span></span>
             </div>
         </div>
         
@@ -295,23 +306,25 @@
                 <input type="number" id="whaleThreshold" value="50000" min="1000" step="1000">
             </div>
             <div class="control-group">
-                <label>REST 輪詢間隔 (ms)</label>
-                <input type="number" id="pollInterval" value="3000" min="1000" step="500">
+                <label>輪詢間隔 (ms)</label>
+                <input type="number" id="pollInterval" value="5000" min="2000" step="1000">
             </div>
             <div class="control-group">
-                <label>數據源</label>
-                <select id="dataSource">
-                    <option value="rest">REST API (穩定)</option>
-                    <option value="websocket">WebSocket (即時)</option>
-                    <option value="both" selected>雙軌並行</option>
+                <label>數據源模式</label>
+                <select id="dataMode">
+                    <option value="single">單幣種輪詢 (穩定)</option>
+                    <option value="batch" selected>批量全部幣種 (快速)</option>
                 </select>
             </div>
             <button class="btn" id="startBtn" onclick="startMonitoring()">開始監控</button>
             <button class="btn btn-danger" id="stopBtn" onclick="stopMonitoring()" disabled>停止</button>
+            <button class="btn" style="background:#1f2937;" onclick="testApiConnection()">測試 API</button>
         </div>
         
+        <div id="apiTestResult"></div>
+        
         <div class="coin-input-area">
-            <input type="text" id="coinInput" placeholder="輸入幣種，例如：BTC, ETH, SOL, DOGE (用逗號分隔)" value="BTC,ETH,SOL,DOGE,XRP,PEPE,WIF">
+            <input type="text" id="coinInput" placeholder="輸入幣種，例如：BTC, ETH, SOL, DOGE (用逗號分隔)" value="BTC,ETH,SOL,DOGE,XRP">
             <button class="btn" onclick="addCoins()">添加幣種</button>
         </div>
         
@@ -381,23 +394,26 @@
         // ==================== 配置 ====================
         const CONFIG = {
             SPOT_REST_BASE: 'https://api-spot.weex.com',
-            CONTRACT_REST_BASE: 'https://api-contract.weex.com',
-            CONTRACT_WS: 'wss://ws-contract.weex.com/v2/ws/public',
-            SPOT_WS: 'wss://ws-spot.weex.com/v2/ws/public', // 推測的 Spot WebSocket
-            DEFAULT_COINS: ['BTC', 'ETH', 'SOL', 'DOGE', 'XRP'],
-            MAX_COINS: 20
+            // 正確的端點路徑根據官方文件
+            ENDPOINTS: {
+                ticker24h: '/api/v3/market/ticker/24hr',
+                trades: '/api/v3/market/trades',
+                price: '/api/v3/market/ticker/price',
+                exchangeInfo: '/api/v3/exchangeInfo'
+            }
         };
         
         // ==================== 狀態 ====================
         let state = {
             coins: new Map(), // symbol -> data
-            ws: null,
-            wsConnected: false,
             restInterval: null,
             isMonitoring: false,
             updateCount: 0,
-            whaleTrades: [], // 最近的大單成交
-            logs: []
+            successCount: 0,
+            failCount: 0,
+            whaleTrades: [],
+            logs: [],
+            lastPrices: new Map() // 用於追蹤價格變化
         };
         
         // ==================== 工具函數 ====================
@@ -414,9 +430,10 @@
         }
         
         function formatPrice(price) {
-            if (!price) return '--';
+            if (price === undefined || price === null) return '--';
             const num = parseFloat(price);
-            if (num >= 1000) return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (isNaN(num)) return '--';
+            if (num >= 10000) return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             if (num >= 1) return num.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
             return num.toLocaleString('en-US', { minimumFractionDigits: 6, maximumFractionDigits: 8 });
         }
@@ -424,6 +441,7 @@
         function formatVolume(vol) {
             if (!vol) return '--';
             const num = parseFloat(vol);
+            if (isNaN(num)) return '--';
             if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
             if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
             if (num >= 1e3) return (num / 1e3).toFixed(2) + 'K';
@@ -434,65 +452,59 @@
             return `${symbol.toUpperCase()}USDT`;
         }
         
-        // ==================== REST API ====================
-        async function fetchSpotTicker(symbol) {
+        // ==================== API 請求核心 ====================
+        // 使用多種 CORS 代理策略
+        async function fetchWithCors(url) {
+            // 策略 1: 直接請求（某些瀏覽器擴展或環境可能允許）
             try {
-                const pair = getSymbolPair(symbol);
-                // 使用 CORS proxy 避免跨域問題
-                const proxyUrls = [
-                    `https://corsproxy.io/?${encodeURIComponent(`${CONFIG.SPOT_REST_BASE}/api/v3/market/ticker/24hr?symbol=${pair}`)}`,
-                    `https://api.allorigins.win/raw?url=${encodeURIComponent(`${CONFIG.SPOT_REST_BASE}/api/v3/market/ticker/24hr?symbol=${pair}`)}`
-                ];
-                
-                let lastError;
-                for (const url of proxyUrls) {
-                    try {
-                        const response = await fetch(url, { 
-                            method: 'GET',
-                            headers: { 'Accept': 'application/json' }
-                        });
-                        if (response.ok) {
-                            const data = await response.json();
-                            return data;
-                        }
-                    } catch (e) { lastError = e; }
-                }
-                throw lastError || new Error('All proxies failed');
-            } catch (error) {
-                // 嘗試直接請求（某些環境可能允許）
-                try {
-                    const pair = getSymbolPair(symbol);
-                    const response = await fetch(`${CONFIG.SPOT_REST_BASE}/api/v3/market/ticker/24hr?symbol=${pair}`);
-                    if (response.ok) return await response.json();
-                } catch (e) {}
-                throw error;
-            }
-        }
-        
-        async function fetchSpotTrades(symbol, limit = 50) {
+                const response = await fetch(url, { 
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    mode: 'cors'
+                });
+                if (response.ok) return await response.json();
+            } catch (e) {}
+            
+            // 策略 2: 使用 corsproxy.io
             try {
-                const pair = getSymbolPair(symbol);
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(`${CONFIG.SPOT_REST_BASE}/api/v3/market/trades?symbol=${pair}&limit=${limit}`)}`;
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
                 const response = await fetch(proxyUrl);
                 if (response.ok) return await response.json();
-                return null;
-            } catch (e) {
-                return null;
-            }
+            } catch (e) {}
+            
+            // 策略 3: 使用 allorigins
+            try {
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl);
+                if (response.ok) return await response.json();
+            } catch (e) {}
+            
+            // 策略 4: 使用 cors-anywhere
+            try {
+                const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`;
+                const response = await fetch(proxyUrl);
+                if (response.ok) return await response.json();
+            } catch (e) {}
+            
+            throw new Error('所有請求策略均失敗');
         }
         
-        async function fetchAllSpotTickers() {
-            try {
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(`${CONFIG.SPOT_REST_BASE}/api/v3/market/ticker/24hr`)}`;
-                const response = await fetch(proxyUrl);
-                if (response.ok) {
-                    const data = await response.json();
-                    return Array.isArray(data) ? data : (data.data || []);
-                }
-                return null;
-            } catch (e) {
-                return null;
-            }
+        // ==================== REST API 函數 ====================
+        async function fetchTicker24h(symbol) {
+            const pair = getSymbolPair(symbol);
+            const url = `${CONFIG.SPOT_REST_BASE}${CONFIG.ENDPOINTS.ticker24h}?symbol=${pair}`;
+            return await fetchWithCors(url);
+        }
+        
+        async function fetchTrades(symbol, limit = 50) {
+            const pair = getSymbolPair(symbol);
+            const url = `${CONFIG.SPOT_REST_BASE}${CONFIG.ENDPOINTS.trades}?symbol=${pair}&limit=${limit}`;
+            return await fetchWithCors(url);
+        }
+        
+        async function fetchAllTickers() {
+            const url = `${CONFIG.SPOT_REST_BASE}${CONFIG.ENDPOINTS.ticker24h}`;
+            return await fetchWithCors(url);
         }
         
         // ==================== 莊家指數計算 ====================
@@ -506,60 +518,68 @@
             
             const adjustedThreshold = threshold * multiplier;
             
-            // 基礎分數
             let score = 50;
             let whaleRatio = 0;
-            let buyPressure = 0;
+            let buyPressure = 0.5;
             
-            // 從成交數據分析
-            if (trades && Array.isArray(trades)) {
+            // 從成交數據分析大單
+            if (trades && Array.isArray(trades) && trades.length > 0) {
                 let whaleVolume = 0;
                 let totalVolume = 0;
                 let buyVolume = 0;
                 let sellVolume = 0;
                 
                 trades.forEach(trade => {
-                    const price = parseFloat(trade.p || trade.price || 0);
-                    const qty = parseFloat(trade.q || trade.qty || trade.quantity || 0);
-                    const isBuyerMaker = trade.m || trade.isBuyerMaker || false;
-                    const value = price * qty;
+                    const price = parseFloat(trade.price || trade.p || 0);
+                    const qty = parseFloat(trade.qty || trade.q || trade.quantity || 0);
+                    const quoteQty = parseFloat(trade.quoteQty || 0);
+                    const value = quoteQty > 0 ? quoteQty : (price * qty);
                     
-                    totalVolume += value;
-                    if (value >= adjustedThreshold) {
-                        whaleVolume += value;
-                    }
-                    if (isBuyerMaker) {
-                        sellVolume += value; // 買方是 maker = 賣壓
-                    } else {
-                        buyVolume += value; // 買方是 taker = 買壓
+                    if (value > 0) {
+                        totalVolume += value;
+                        if (value >= adjustedThreshold) {
+                            whaleVolume += value;
+                        }
+                        
+                        const isBuyerMaker = trade.isBuyerMaker || trade.m || false;
+                        if (isBuyerMaker) {
+                            sellVolume += value;
+                        } else {
+                            buyVolume += value;
+                        }
                     }
                 });
                 
                 whaleRatio = totalVolume > 0 ? (whaleVolume / totalVolume) : 0;
-                buyPressure = (buyVolume + sellVolume) > 0 ? (buyVolume / (buyVolume + sellVolume)) : 0.5;
+                const totalPressure = buyVolume + sellVolume;
+                buyPressure = totalPressure > 0 ? (buyVolume / totalPressure) : 0.5;
             }
             
-            // 從 24h 數據分析
+            // 從 24h ticker 數據分析
             if (coinData) {
                 const priceChange = parseFloat(coinData.priceChangePercent || coinData.P || 0);
                 const volume = parseFloat(coinData.volume || coinData.v || 0);
                 const quoteVolume = parseFloat(coinData.quoteVolume || coinData.q || 0);
                 
-                // 價格波動加分
+                // 價格波動加成
+                if (Math.abs(priceChange) > 3) score += 5;
                 if (Math.abs(priceChange) > 5) score += 10;
                 if (Math.abs(priceChange) > 10) score += 15;
+                if (Math.abs(priceChange) > 20) score += 10;
                 
-                // 成交量異常加分
-                const avgPrice = quoteVolume / (volume || 1);
-                if (avgPrice > 0 && quoteVolume > 1e7) score += 10;
+                // 成交量異常
+                if (quoteVolume > 1e7) score += 5;
+                if (quoteVolume > 1e8) score += 10;
             }
             
-            // 大單比例影響
+            // 大單比例影響 (0~30分)
             score += whaleRatio * 30;
             
             // 買賣壓力影響
-            if (buyPressure > 0.6) score += 10;
-            if (buyPressure < 0.4) score -= 10;
+            if (buyPressure > 0.7) score += 10;
+            else if (buyPressure > 0.6) score += 5;
+            else if (buyPressure < 0.3) score -= 10;
+            else if (buyPressure < 0.4) score -= 5;
             
             // 限制範圍
             score = Math.max(0, Math.min(100, score));
@@ -583,109 +603,9 @@
             return { text: '持有', class: 'signal-hold', icon: '➖' };
         }
         
-        // ==================== WebSocket ====================
-        function connectWebSocket() {
-            if (state.ws) {
-                try { state.ws.close(); } catch (e) {}
-            }
-            
-            const dataSource = document.getElementById('dataSource').value;
-            if (dataSource === 'rest') {
-                updateWsStatus('disabled', 'WebSocket: 已禁用');
-                return;
-            }
-            
-            updateWsStatus('connecting', 'WebSocket: 連線中...');
-            
-            // 嘗試連接 Spot WebSocket
-            const wsUrl = CONFIG.SPOT_WS;
-            state.ws = new WebSocket(wsUrl);
-            
-            state.ws.onopen = () => {
-                state.wsConnected = true;
-                updateWsStatus('connected', 'WebSocket: 已連線');
-                log('WebSocket 連線成功', 'success');
-                
-                // 訂閱所有監控幣種的 ticker
-                state.coins.forEach((_, symbol) => {
-                    const pair = getSymbolPair(symbol).toLowerCase();
-                    const subscribeMsg = {
-                        method: "SUBSCRIBE",
-                        params: [`${pair}@ticker`, `${pair}@trade`],
-                        id: Date.now()
-                    };
-                    state.ws.send(JSON.stringify(subscribeMsg));
-                });
-            };
-            
-            state.ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    handleWebSocketData(data);
-                } catch (e) {
-                    // 忽略非 JSON 數據
-                }
-            };
-            
-            state.ws.onerror = (error) => {
-                updateWsStatus('error', 'WebSocket: 連線錯誤');
-                log('WebSocket 錯誤，嘗試重連...', 'error');
-            };
-            
-            state.ws.onclose = () => {
-                state.wsConnected = false;
-                updateWsStatus('error', 'WebSocket: 已斷線');
-                if (state.isMonitoring) {
-                    setTimeout(() => {
-                        if (state.isMonitoring) connectWebSocket();
-                    }, 5000);
-                }
-            };
-        }
-        
-        function handleWebSocketData(data) {
-            if (data.e === '24hrTicker' || data.e === 'ticker') {
-                const symbol = data.s ? data.s.replace('USDT', '') : '';
-                if (state.coins.has(symbol)) {
-                    const coinData = state.coins.get(symbol);
-                    coinData.price = data.c || data.lastPrice;
-                    coinData.change = data.P || data.priceChangePercent;
-                    coinData.high = data.h || data.highPrice;
-                    coinData.low = data.l || data.lowPrice;
-                    coinData.volume = data.v || data.volume;
-                    coinData.quoteVolume = data.q || data.quoteVolume;
-                    coinData.lastUpdate = Date.now();
-                    state.coins.set(symbol, coinData);
-                }
-            } else if (data.e === 'trade' || data.e === 'aggTrade') {
-                const symbol = data.s ? data.s.replace('USDT', '') : '';
-                const price = parseFloat(data.p || data.price || 0);
-                const qty = parseFloat(data.q || data.quantity || 0);
-                const value = price * qty;
-                const threshold = parseFloat(document.getElementById('whaleThreshold').value) || 50000;
-                
-                if (value >= threshold) {
-                    state.whaleTrades.push({
-                        symbol,
-                        value,
-                        time: Date.now(),
-                        isBuy: !(data.m || data.isBuyerMaker)
-                    });
-                    // 保留最近 100 筆
-                    if (state.whaleTrades.length > 100) state.whaleTrades.shift();
-                }
-            }
-        }
-        
         // ==================== UI 更新 ====================
-        function updateWsStatus(status, text) {
-            const el = document.getElementById('wsStatus');
-            el.className = `status-pill status-${status}`;
-            el.querySelector('span:last-child').textContent = text;
-        }
-        
-        function updateRestStatus(status, text) {
-            const el = document.getElementById('restStatus');
+        function updateApiStatus(status, text) {
+            const el = document.getElementById('apiStatus');
             el.className = `status-pill status-${status}`;
             el.querySelector('span:last-child').textContent = text;
         }
@@ -709,12 +629,17 @@
             let bestCoin = null;
             let bestScore = -1;
             let totalChange = 0;
+            let activeCoins = 0;
             
             state.coins.forEach((data, symbol) => {
-                const price = data.price || data.lastPrice || '--';
-                const change = data.change || data.priceChangePercent || 0;
-                const volume = data.volume || data.v || 0;
-                const quoteVolume = data.quoteVolume || data.q || 0;
+                // 只顯示有有效數據的幣種
+                if (!data || !data.lastPrice) return;
+                
+                activeCoins++;
+                const price = data.lastPrice;
+                const change = data.priceChangePercent || 0;
+                const volume = data.volume || 0;
+                const quoteVolume = data.quoteVolume || 0;
                 
                 const whaleIndex = calculateWhaleIndex(data, data.trades);
                 const signal = getSignal(whaleIndex, change);
@@ -737,10 +662,22 @@
                 const lastUpdate = data.lastUpdate ? 
                     new Date(data.lastUpdate).toLocaleTimeString('zh-TW') : '--';
                 
+                // 價格變化指示
+                const lastPrice = state.lastPrices.get(symbol);
+                let priceIndicator = '';
+                if (lastPrice && parseFloat(price) !== lastPrice) {
+                    priceIndicator = parseFloat(price) > lastPrice ? 
+                        '<span style="color:#34d399;">↗</span>' : 
+                        '<span style="color:#f87171;">↘</span>';
+                }
+                state.lastPrices.set(symbol, parseFloat(price));
+                
                 html += `
                     <tr>
                         <td><strong>${symbol}</strong>/USDT</td>
-                        <td style="font-family:monospace;font-size:1.1em;">${formatPrice(price)}</td>
+                        <td style="font-family:monospace;font-size:1.1em;">
+                            ${formatPrice(price)} ${priceIndicator}
+                        </td>
                         <td class="${changeClass}">${changeIcon} ${Math.abs(parseFloat(change)).toFixed(2)}%</td>
                         <td>${formatVolume(quoteVolume)}</td>
                         <td>
@@ -761,12 +698,24 @@
                 `;
             });
             
+            if (activeCoins === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align:center;color:#6b7280;padding:40px;">
+                            ⏳ 正在獲取數據...<br>
+                            <span style="font-size:0.85em;">如果持續無數據，請點擊「測試 API」檢查連線</span>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
             tbody.innerHTML = html;
             
             // 更新摘要卡片
-            document.getElementById('totalCoins').textContent = state.coins.size;
+            document.getElementById('totalCoins').textContent = activeCoins;
             
-            const avgWhaleScore = state.coins.size > 0 ? (totalWhaleScore / state.coins.size) : 0;
+            const avgWhaleScore = activeCoins > 0 ? (totalWhaleScore / activeCoins) : 0;
             const whaleActivityEl = document.getElementById('whaleActivity');
             whaleActivityEl.textContent = avgWhaleScore >= 60 ? '活躍' : avgWhaleScore >= 40 ? '一般' : '低迷';
             whaleActivityEl.className = `card-value ${avgWhaleScore >= 60 ? 'positive' : avgWhaleScore >= 40 ? 'neutral' : 'negative'}`;
@@ -780,65 +729,142 @@
                     `莊家指數 ${bestCoin.score} · ${bestCoin.signal.text}`;
             }
             
-            const avgChange = state.coins.size > 0 ? (totalChange / state.coins.size) : 0;
+            const avgChange = activeCoins > 0 ? (totalChange / activeCoins) : 0;
             const avgChangeEl = document.getElementById('avgChange');
             avgChangeEl.textContent = `${avgChange >= 0 ? '+' : ''}${avgChange.toFixed(2)}%`;
             avgChangeEl.className = `card-value ${avgChange >= 0 ? 'positive' : 'negative'}`;
         }
         
         // ==================== 核心監控邏輯 ====================
+        async function updateCoinData(symbol) {
+            try {
+                const tickerData = await fetchTicker24h(symbol);
+                
+                if (tickerData && (tickerData.lastPrice || tickerData.price)) {
+                    // 處理不同格式的回應
+                    const normalizedData = {
+                        symbol: symbol,
+                        lastPrice: tickerData.lastPrice || tickerData.price || tickerData.c,
+                        priceChange: tickerData.priceChange || tickerData.p,
+                        priceChangePercent: tickerData.priceChangePercent || tickerData.P,
+                        highPrice: tickerData.highPrice || tickerData.h,
+                        lowPrice: tickerData.lowPrice || tickerData.l,
+                        volume: tickerData.volume || tickerData.v,
+                        quoteVolume: tickerData.quoteVolume || tickerData.q,
+                        openPrice: tickerData.openPrice || tickerData.o,
+                        bidPrice: tickerData.bidPrice || tickerData.b,
+                        askPrice: tickerData.askPrice || tickerData.a,
+                        lastUpdate: Date.now()
+                    };
+                    
+                    // 獲取現有數據並合併
+                    const existing = state.coins.get(symbol) || {};
+                    state.coins.set(symbol, { ...existing, ...normalizedData });
+                    
+                    state.successCount++;
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                state.failCount++;
+                log(`${symbol} Ticker 獲取失敗: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function updateCoinTrades(symbol) {
+            try {
+                const tradesData = await fetchTrades(symbol, 50);
+                if (tradesData && Array.isArray(tradesData)) {
+                    const coin = state.coins.get(symbol);
+                    if (coin) {
+                        coin.trades = tradesData;
+                        state.coins.set(symbol, coin);
+                    }
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                // 交易數據失敗不影響主要功能
+                return false;
+            }
+        }
+        
         async function pollRestData() {
             if (!state.isMonitoring) return;
             
-            const dataSource = document.getElementById('dataSource').value;
-            if (dataSource === 'websocket' && state.wsConnected) {
-                updateRestStatus('connected', 'REST API: WebSocket 模式');
-                return;
-            }
-            
-            updateRestStatus('connecting', 'REST API: 更新中...');
+            updateApiStatus('connecting', 'API: 更新中...');
             
             const symbols = Array.from(state.coins.keys());
-            let successCount = 0;
+            const dataMode = document.getElementById('dataMode').value;
+            let updatedCount = 0;
             
-            for (const symbol of symbols) {
+            if (dataMode === 'batch' && symbols.length > 0) {
+                // 批量模式：先獲取所有幣種數據，再分配
                 try {
-                    // 獲取 24h ticker
-                    const tickerData = await fetchSpotTicker(symbol);
-                    if (tickerData) {
-                        const existing = state.coins.get(symbol) || {};
-                        state.coins.set(symbol, {
-                            ...existing,
-                            ...tickerData,
-                            lastUpdate: Date.now()
+                    const allTickers = await fetchAllTickers();
+                    if (allTickers && Array.isArray(allTickers)) {
+                        allTickers.forEach(ticker => {
+                            const symbol = ticker.symbol ? ticker.symbol.replace('USDT', '') : '';
+                            if (state.coins.has(symbol)) {
+                                const normalizedData = {
+                                    symbol: symbol,
+                                    lastPrice: ticker.lastPrice,
+                                    priceChange: ticker.priceChange,
+                                    priceChangePercent: ticker.priceChangePercent,
+                                    highPrice: ticker.highPrice,
+                                    lowPrice: ticker.lowPrice,
+                                    volume: ticker.volume,
+                                    quoteVolume: ticker.quoteVolume,
+                                    openPrice: ticker.openPrice,
+                                    bidPrice: ticker.bidPrice,
+                                    askPrice: ticker.askPrice,
+                                    lastUpdate: Date.now()
+                                };
+                                const existing = state.coins.get(symbol) || {};
+                                state.coins.set(symbol, { ...existing, ...normalizedData });
+                                updatedCount++;
+                            }
                         });
-                        successCount++;
-                    }
-                    
-                    // 獲取最近成交（用於大單分析）
-                    const tradesData = await fetchSpotTrades(symbol, 30);
-                    if (tradesData && Array.isArray(tradesData)) {
-                        const coin = state.coins.get(symbol);
-                        if (coin) {
-                            coin.trades = tradesData;
-                            state.coins.set(symbol, coin);
+                        
+                        // 獲取交易數據
+                        for (const symbol of symbols) {
+                            await updateCoinTrades(symbol);
+                            await new Promise(r => setTimeout(r, 100)); // 避免請求過快
                         }
                     }
                 } catch (error) {
-                    log(`${symbol} 數據獲取失敗: ${error.message}`, 'error');
+                    log('批量獲取失敗，切換到單幣種模式', 'warn');
+                    // 失敗時切換到單幣種模式
+                    for (const symbol of symbols) {
+                        const success = await updateCoinData(symbol);
+                        if (success) updatedCount++;
+                        await new Promise(r => setTimeout(r, 200));
+                    }
                 }
-                
-                // 小延遲避免請求過快
-                await new Promise(r => setTimeout(r, 200));
+            } else {
+                // 單幣種輪詢模式
+                for (const symbol of symbols) {
+                    const success = await updateCoinData(symbol);
+                    if (success) {
+                        updatedCount++;
+                        await updateCoinTrades(symbol);
+                    }
+                    await new Promise(r => setTimeout(r, 200));
+                }
             }
             
-            if (successCount > 0) {
-                updateRestStatus('connected', `REST API: 已更新 ${successCount}/${symbols.length}`);
-                state.updateCount++;
-                document.getElementById('updateCount').textContent = state.updateCount;
+            // 更新 UI
+            state.updateCount++;
+            document.getElementById('updateCount').textContent = state.updateCount;
+            document.getElementById('successCount').textContent = state.successCount;
+            document.getElementById('failCount').textContent = state.failCount;
+            
+            if (updatedCount > 0) {
+                updateApiStatus('connected', `API: 已更新 ${updatedCount}/${symbols.length} 幣種`);
                 updateTable();
             } else {
-                updateRestStatus('error', 'REST API: 更新失敗');
+                updateApiStatus('error', 'API: 更新失敗，檢查網路或 API 狀態');
             }
         }
         
@@ -856,7 +882,7 @@
                 const newCoins = coinInput.split(/[,，\s]+/).filter(c => c.trim());
                 newCoins.forEach(coin => {
                     const symbol = coin.toUpperCase().replace('USDT', '').replace('/', '');
-                    if (!state.coins.has(symbol) && state.coins.size < CONFIG.MAX_COINS) {
+                    if (!state.coins.has(symbol) && state.coins.size < 20) {
                         state.coins.set(symbol, { symbol, lastUpdate: null });
                     }
                 });
@@ -873,17 +899,11 @@
             
             log(`開始監控 ${state.coins.size} 個幣種...`, 'success');
             
-            // 連接 WebSocket
-            const dataSource = document.getElementById('dataSource').value;
-            if (dataSource !== 'rest') {
-                connectWebSocket();
-            }
-            
-            // 立即執行一次 REST 輪詢
+            // 立即執行一次
             await pollRestData();
             
             // 設定定時輪詢
-            const interval = parseInt(document.getElementById('pollInterval').value) || 3000;
+            const interval = parseInt(document.getElementById('pollInterval').value) || 5000;
             state.restInterval = setInterval(pollRestData, interval);
         }
         
@@ -895,19 +915,10 @@
                 state.restInterval = null;
             }
             
-            if (state.ws) {
-                try { state.ws.close(); } catch (e) {}
-                state.ws = null;
-            }
-            
-            state.wsConnected = false;
-            
             document.getElementById('startBtn').disabled = false;
             document.getElementById('stopBtn').disabled = true;
             
-            updateWsStatus('error', 'WebSocket: 已停止');
-            updateRestStatus('error', 'REST API: 已停止');
-            
+            updateApiStatus('error', 'API: 已停止');
             log('監控已停止', 'warn');
         }
         
@@ -923,40 +934,95 @@
             
             newCoins.forEach(coin => {
                 const symbol = coin.toUpperCase().replace('USDT', '').replace('/', '');
-                if (!state.coins.has(symbol) && state.coins.size < CONFIG.MAX_COINS) {
+                if (!state.coins.has(symbol) && state.coins.size < 20) {
                     state.coins.set(symbol, { symbol, lastUpdate: null });
                     added++;
-                    
-                    // 如果已在監控中，訂閱新幣種的 WebSocket
-                    if (state.isMonitoring && state.wsConnected) {
-                        const pair = getSymbolPair(symbol).toLowerCase();
-                        const subscribeMsg = {
-                            method: "SUBSCRIBE",
-                            params: [`${pair}@ticker`, `${pair}@trade`],
-                            id: Date.now()
-                        };
-                        state.ws.send(JSON.stringify(subscribeMsg));
-                    }
                 }
             });
             
             if (added > 0) {
                 log(`已添加 ${added} 個幣種`, 'success');
+                updateTable();
+                // 如果正在監控，立即更新新幣種
                 if (state.isMonitoring) {
-                    updateTable();
+                    pollRestData();
                 }
             } else {
-                log('沒有新幣種被添加（可能已存在或達到上限）', 'warn');
+                log('沒有新幣種被添加（可能已存在或達到上限 20 個）', 'warn');
             }
+        }
+        
+        // ==================== API 測試 ====================
+        async function testApiConnection() {
+            const resultDiv = document.getElementById('apiTestResult');
+            resultDiv.innerHTML = '<div class="api-test-result" style="background:#1f2937;">🔄 測試 API 連線中...</div>';
+            
+            const tests = [];
+            
+            // 測試 1: Ping
+            try {
+                const pingUrl = `${CONFIG.SPOT_REST_BASE}/api/v3/ping`;
+                const pingData = await fetchWithCors(pingUrl);
+                tests.push({ name: 'Ping', success: true, data: pingData });
+            } catch (e) {
+                tests.push({ name: 'Ping', success: false, error: e.message });
+            }
+            
+            // 測試 2: BTC Ticker
+            try {
+                const btcData = await fetchTicker24h('BTC');
+                tests.push({ name: 'BTC 24h Ticker', success: true, data: btcData });
+            } catch (e) {
+                tests.push({ name: 'BTC 24h Ticker', success: false, error: e.message });
+            }
+            
+            // 測試 3: BTC Trades
+            try {
+                const tradesData = await fetchTrades('BTC', 5);
+                tests.push({ name: 'BTC Trades', success: true, data: tradesData });
+            } catch (e) {
+                tests.push({ name: 'BTC Trades', success: false, error: e.message });
+            }
+            
+            // 顯示結果
+            let html = '';
+            let allSuccess = true;
+            
+            tests.forEach(test => {
+                if (test.success) {
+                    html += `<div class="api-test-result api-test-success">✅ ${test.name}: 成功</div>`;
+                } else {
+                    html += `<div class="api-test-result api-test-fail">❌ ${test.name}: 失敗 - ${test.error}</div>`;
+                    allSuccess = false;
+                }
+            });
+            
+            if (allSuccess) {
+                html += `<div class="api-test-result api-test-success">🎉 所有 API 測試通過！可以開始監控</div>`;
+            } else {
+                html += `<div class="api-test-result api-test-fail">⚠️ 部分 API 測試失敗，請檢查網路或稍後再試</div>`;
+            }
+            
+            resultDiv.innerHTML = html;
+            
+            // 記錄到日誌
+            tests.forEach(test => {
+                if (test.success) {
+                    log(`API 測試 ${test.name}: 成功`, 'success');
+                } else {
+                    log(`API 測試 ${test.name}: 失敗 - ${test.error}`, 'error');
+                }
+            });
         }
         
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', () => {
             log('WEEX 莊家監控 Pro 已載入', 'info');
-            log('請輸入幣種並點擊「開始監控」', 'info');
+            log('建議先點擊「測試 API」確認連線正常', 'info');
             
-            // 預設載入一些幣種但不啟動
-            CONFIG.DEFAULT_COINS.forEach(coin => {
+            // 預設載入幣種但不啟動
+            const defaultCoins = ['BTC', 'ETH', 'SOL', 'DOGE', 'XRP'];
+            defaultCoins.forEach(coin => {
                 state.coins.set(coin, { symbol: coin, lastUpdate: null });
             });
             updateTable();
