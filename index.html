@@ -83,8 +83,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="ws-status" id="wsStatus"></div>
 
 <script>
-// ===== WebSocket + REST 雙保險 =====
-const WS_URL = 'wss://wbs.weex.com/ws';
+// ===== 正確的 WEEX WebSocket 設定 =====
+const WS_URL = 'wss://ws-spot.weex.com/v3/ws/public';
 const REST_API = 'https://api-spot.weex.com';
 const CORS_PROXY = 'https://corsproxy.io/?';
 let ws = null;
@@ -94,6 +94,7 @@ const COINS = [];
 const COIN_DATA = {};
 const PRICE_HISTORY = {};
 let lastPrices = {};
+let wsId = 1;
 
 function loadCoins(){try{const s=localStorage.getItem('weex_coins');if(s)JSON.parse(s).forEach(c=>{if(!COINS.includes(c))COINS.push(c)})}catch(e){}}
 function saveCoins(){try{localStorage.setItem('weex_coins',JSON.stringify(COINS))}catch(e){}}
@@ -106,68 +107,84 @@ function getDecimals(sym){
   return 4;
 }
 
-// ===== WebSocket 連線 =====
+function updateStatus(text, mode){
+  document.getElementById('apiStatus').innerHTML = `<span>${text}</span>`;
+  document.getElementById('apiMode').textContent = mode;
+}
+
+// ===== WebSocket 連線（修正版）=====
 function connectWebSocket(){
   try{
     ws = new WebSocket(WS_URL);
+    
     ws.onopen = () => {
       wsConnected = true;
-      useWs = true;
-      updateStatus('🟢 WebSocket 已連線', 'WS即時');
-      // 訂閱所有監控幣種的 ticker
+      updateStatus('🟢 WebSocket 連線成功', 'WS即時');
+      // 訂閱所有監控幣種的 ticker（正確格式）
       COINS.forEach(sym => {
-        ws.send(JSON.stringify({op:'subscribe',args:[`tickers:${sym}`]}));
+        ws.send(JSON.stringify({
+          method: 'SUBSCRIBE',
+          params: [`${sym}@ticker`],
+          id: wsId++
+        }));
       });
     };
+    
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-      if(msg.data && msg.data.lastPrice){
-        const sym = msg.data.symbol || msg.data.instId;
+      
+      // 處理 Ping
+      if(msg.event === 'ping'){
+        ws.send(JSON.stringify({method:'PONG',id:wsId++}));
+        return;
+      }
+      
+      // 處理訂閱確認
+      if(msg.result === 'success' && msg.id){
+        console.log('訂閱成功:', msg);
+        return;
+      }
+      
+      // 處理 ticker 數據
+      if(msg.data && msg.data.c){
+        // msg.data.c = lastPrice, msg.data.s = symbol
+        const sym = msg.data.s;
         if(sym && COINS.includes(sym)){
           lastPrices[sym] = {
-            price: parseFloat(msg.data.lastPrice),
-            time: Date.now(),
-            change24h: msg.data.change24h || 0,
-            vol: msg.data.volume || 0
+            price: parseFloat(msg.data.c),
+            change24h: parseFloat(msg.data.P || 0),
+            vol: parseFloat(msg.data.v || 0),
+            high: parseFloat(msg.data.h || 0),
+            low: parseFloat(msg.data.l || 0),
+            time: Date.now()
           };
+          useWs = true;
           updateSingleCard(sym);
         }
       }
     };
+    
     ws.onclose = () => {
       wsConnected = false;
       useWs = false;
       updateStatus('🟡 WebSocket 斷線，切換 REST', 'REST輪詢');
       setTimeout(connectWebSocket, 5000);
     };
-    ws.onerror = () => {
+    
+    ws.onerror = (err) => {
+      console.error('WS error:', err);
       wsConnected = false;
       useWs = false;
     };
+    
   }catch(e){
+    console.error('WS connect error:', e);
     wsConnected = false;
     useWs = false;
   }
 }
 
-function updateStatus(text, mode){
-  document.getElementById('apiStatus').innerHTML = `<span>${text}</span>`;
-  document.getElementById('apiMode').textContent = mode;
-}
-
 // ===== REST API（備援）=====
-async function fetchLatestPrice(symbol){
-  try{
-    const url = CORS_PROXY + encodeURIComponent(`${REST_API}/api/v3/market/ticker/price?symbols=${symbol}`);
-    const res = await fetch(url);
-    const data = await res.json();
-    if(Array.isArray(data) && data.length > 0){
-      return parseFloat(data[0].price || data[0].lastPrice || 0);
-    }
-  }catch(e){}
-  return null;
-}
-
 async function fetch24hData(symbol){
   try{
     const url = CORS_PROXY + encodeURIComponent(`${REST_API}/api/v3/market/ticker/24hr?symbols=${symbol}`);
@@ -262,7 +279,7 @@ function analyzeCoin(symbol,data){
   return{whaleStatus,whaleText,whaleClass,entryStatus,entryText,entryClass,strength,tp1,tp2,sl,showAlert};
 }
 
-// ===== 渲染單一卡片（用於 WebSocket 即時更新）=====
+// ===== 即時更新單一卡片（WebSocket 用）=====
 function updateSingleCard(symbol){
   const lp = lastPrices[symbol];
   if(!lp) return;
@@ -270,23 +287,21 @@ function updateSingleCard(symbol){
   const card = document.getElementById(`card-${symbol}`);
   if(!card) return;
   
-  // 只更新價格和時間戳，不重新渲染整個卡片（避免閃爍）
   const priceEl = card.querySelector('.coin-price');
   const ageEl = card.querySelector('.data-age');
+  const modeEl = card.querySelector('.status-dot');
+  
   if(priceEl){
     const oldPrice = parseFloat(priceEl.textContent.replace('$',''));
     const newPrice = lp.price;
     priceEl.textContent = '$' + newPrice.toFixed(getDecimals(symbol));
     priceEl.className = `coin-price ${newPrice >= oldPrice ? 'price-up' : 'price-down'}`;
   }
-  if(ageEl){
-    ageEl.textContent = '⚡ 剛更新';
+  if(ageEl) ageEl.textContent = '⚡ WebSocket 即時';
+  if(modeEl){
+    modeEl.className = 'status-dot status-live';
+    modeEl.nextSibling.textContent = ' WebSocket 即時';
   }
-  
-  // 3秒後恢復正常顯示
-  setTimeout(() => {
-    if(ageEl) ageEl.textContent = '資料即時';
-  }, 3000);
 }
 
 // ===== 完整渲染 =====
@@ -295,8 +310,6 @@ function renderCard(data){
   const up=parseFloat(data.changePct)>=0;
   const sc=a.strength>70?'var(--green)':a.strength>40?'var(--yellow)':'var(--red)';
   const volSpike=data.volumeRaw>100000000?'volume-spike':'';
-  const age = Math.round((Date.now() - data.timestamp) / 1000);
-  const ageText = age < 2 ? '⚡ 剛更新' : `資料更新於 ${age} 秒前`;
   
   return`
   <div class="coin-card" id="card-${data.symbol}">
@@ -327,7 +340,7 @@ function renderCard(data){
       <div class="sl">🛑 止損: $${a.sl}</div>
     </div>`:''}
     <div class="history-mini">📊 已追蹤 ${(PRICE_HISTORY[data.symbol]||[]).length} 筆數據</div>
-    <div class="data-age">${ageText}</div>
+    <div class="data-age">${useWs?'⚡ WebSocket 即時':'資料更新於 '+Math.round((Date.now()-data.timestamp)/1000)+' 秒前'}</div>
   </div>`;
 }
 
@@ -340,17 +353,14 @@ async function updateDisplay(){
     let data;
     
     if(useWs && lastPrices[sym]){
-      // WebSocket 有資料，用最新價格
       const lp = lastPrices[sym];
-      const change24h = lp.change24h || 0;
       data = {
-        symbol:sym, price:lp.price.toFixed(getDecimals(sym)), changePct:change24h.toFixed(2),
-        volume:'--', volumeRaw:lp.vol || 0,
-        high:'--', low:'--',
+        symbol:sym, price:lp.price.toFixed(getDecimals(sym)), changePct:lp.change24h.toFixed(2),
+        volume:(lp.vol/1000000).toFixed(2)+'M', volumeRaw:lp.vol,
+        high:lp.high.toFixed(getDecimals(sym)), low:lp.low.toFixed(getDecimals(sym)),
         timestamp:lp.time, mock:false
       };
     } else {
-      // REST API
       const raw = await fetch24hData(sym);
       if(raw){
         const change = raw.open>0?((raw.last-raw.open)/raw.open*100):0;
@@ -384,9 +394,8 @@ function addCoin(){
   COINS.push(sym);
   input.value='';
   saveCoins();
-  // 如果是 WebSocket 模式，訂閱新幣種
   if(wsConnected && ws){
-    ws.send(JSON.stringify({op:'subscribe',args:[`tickers:${sym}`]}));
+    ws.send(JSON.stringify({method:'SUBSCRIBE',params:[`${sym}@ticker`],id:wsId++}));
   }
   updateDisplay();
 }
@@ -399,7 +408,7 @@ function removeCoin(sym){
     delete PRICE_HISTORY[sym];
     delete lastPrices[sym];
     if(wsConnected && ws){
-      ws.send(JSON.stringify({op:'unsubscribe',args:[`tickers:${sym}`]}));
+      ws.send(JSON.stringify({method:'UNSUBSCRIBE',params:[`${sym}@ticker`],id:wsId++}));
     }
     saveCoins();
     updateDisplay();
@@ -411,12 +420,12 @@ loadCoins();
 connectWebSocket();
 updateDisplay();
 
-// WebSocket 優先，如果斷線則用 REST 輪詢
+// REST 輪詢備援（WebSocket 斷線時）
 setInterval(() => {
   if(!useWs) updateDisplay();
 }, 3000);
 
-// 定期檢查 WebSocket 狀態
+// 定期檢查 WebSocket
 setInterval(() => {
   if(!wsConnected && COINS.length > 0){
     connectWebSocket();
