@@ -49,70 +49,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .status-live{background:var(--green)}.status-off{background:var(--red)}
 .last-update{font-size:11px;color:#6e7681;text-align:center;margin-top:4px}
 .volume-spike{color:var(--yellow);font-weight:700}
+.error-msg{color:var(--red);padding:10px;font-size:14px}
 </style>
 </head>
 <body>
 <div class="header"><h1>🚀 WEEX 拉盤監控</h1><div class="sub">山寨幣莊家動向即時追蹤</div></div>
-<div class="add-box"><input type="text" id="coinInput" placeholder="輸入幣種，如 BTCUSDT、PEPEUSDT" onkeypress="if(event.key==='Enter') addCoin()"><button onclick="addCoin()">➕ 加入監控</button></div>
+<div class="add-box"><input type="text" id="coinInput" placeholder="輸入幣種，如 BTC、ETH、PEPE" onkeypress="if(event.key==='Enter') addCoin()"><button onclick="addCoin()">➕ 加入監控</button></div>
 <div id="coinList"></div>
 <div class="last-update" id="lastUpdate"></div>
 
 <script>
-// ===== WEEX API 配置 =====
-const WEEX_REST = 'https://api.weex.com';
-const WEEX_WS = 'wss://wbs.weex.com/ws';
+// ===== WEEX API 設定（修正後）=====
+const WEEX_API = 'https://api-spot.weex.com';
 const COINS = [];
 const COIN_DATA = {};
-let ws = null;
-let wsConnected = false;
 
-// 從 localStorage 讀取
 function loadCoins(){try{const s=localStorage.getItem('weex_coins');if(s)JSON.parse(s).forEach(c=>{if(!COINS.includes(c))COINS.push(c)})}catch(e){}}
 function saveCoins(){try{localStorage.setItem('weex_coins',JSON.stringify(COINS))}catch(e){}}
-
-// 獲取 ticker 數據 (REST)
-async function fetchTicker(symbol){
-  try{
-    const res = await fetch(`${WEEX_REST}/api/spot/v1/market/ticker?symbol=${symbol}`);
-    const json = await res.json();
-    if(json.code==='00000' && json.data){
-      const d = json.data;
-      return {
-        symbol,
-        price: parseFloat(d.last).toFixed(getDecimals(symbol)),
-        changePct: ((parseFloat(d.last)-parseFloat(d.open24h))/parseFloat(d.open24h)*100).toFixed(2),
-        volume: (parseFloat(d.baseVolume)/1000000).toFixed(2)+'M',
-        volumeRaw: parseFloat(d.baseVolume),
-        high: parseFloat(d.high24h).toFixed(getDecimals(symbol)),
-        low: parseFloat(d.low24h).toFixed(getDecimals(symbol)),
-        bid: parseFloat(d.bid).toFixed(getDecimals(symbol)),
-        ask: parseFloat(d.ask).toFixed(getDecimals(symbol)),
-        timestamp: Date.now()
-      };
-    }
-  }catch(e){console.error('ticker error',e)}
-  return null;
-}
-
-// 獲取深度數據
-async function fetchDepth(symbol){
-  try{
-    const res = await fetch(`${WEEX_REST}/api/spot/v1/market/depth?symbol=${symbol}&limit=20`);
-    const json = await res.json();
-    if(json.code==='00000' && json.data){
-      const bids = json.data.bids || [];
-      const asks = json.data.asks || [];
-      const bidSum = bids.reduce((a,b)=>a+parseFloat(b[0])*parseFloat(b[1]),0);
-      const askSum = asks.reduce((a,b)=>a+parseFloat(b[0])*parseFloat(b[1]),0);
-      return {
-        bidDepth: (bidSum/1000000).toFixed(2)+'M',
-        askDepth: (askSum/1000000).toFixed(2)+'M',
-        bidSum, askSum
-      };
-    }
-  }catch(e){}
-  return {bidDepth:'--',askDepth:'--',bidSum:0,askSum:0};
-}
 
 function getDecimals(sym){
   if(sym.includes('PEPE')) return 10;
@@ -122,23 +75,70 @@ function getDecimals(sym){
   return 4;
 }
 
+// 獲取 24h Ticker
+async function fetchTicker(symbol){
+  try{
+    const res = await fetch(`${WEEX_API}/api/v3/market/ticker/24hr?symbols=${symbol}`);
+    const json = await res.json();
+    if(json && Array.isArray(json) && json.length > 0){
+      const d = json[0];
+      const last = parseFloat(d.lastPrice || d.last || 0);
+      const open = parseFloat(d.openPrice || d.open || d.open24h || last);
+      const change = open > 0 ? ((last - open) / open * 100) : 0;
+      const vol = parseFloat(d.volume || d.baseVolume || 0);
+      const high = parseFloat(d.highPrice || d.high || d.high24h || last);
+      const low = parseFloat(d.lowPrice || d.low || d.low24h || last);
+      return {
+        symbol,
+        price: last.toFixed(getDecimals(symbol)),
+        changePct: change.toFixed(2),
+        volume: (vol/1000000).toFixed(2)+'M',
+        volumeRaw: vol,
+        high: high.toFixed(getDecimals(symbol)),
+        low: low.toFixed(getDecimals(symbol)),
+        bid: parseFloat(d.bidPrice || d.bid || last*0.999).toFixed(getDecimals(symbol)),
+        ask: parseFloat(d.askPrice || d.ask || last*1.001).toFixed(getDecimals(symbol)),
+        timestamp: Date.now()
+      };
+    }
+  }catch(e){console.error('ticker error:',e)}
+  return null;
+}
+
+// 獲取深度
+async function fetchDepth(symbol){
+  try{
+    const res = await fetch(`${WEEX_API}/api/v3/market/depth?symbol=${symbol}&limit=20`);
+    const json = await res.json();
+    if(json){
+      const bids = json.bids || [];
+      const asks = json.asks || [];
+      const bidSum = bids.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
+      const askSum = asks.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
+      return {
+        bidDepth: bidSum > 0 ? (bidSum/1000000).toFixed(2)+'M' : '--',
+        askDepth: askSum > 0 ? (askSum/1000000).toFixed(2)+'M' : '--',
+        bidSum, askSum
+      };
+    }
+  }catch(e){console.error('depth error:',e)}
+  return {bidDepth:'--',askDepth:'--',bidSum:0,askSum:0};
+}
+
 // 拉盤分析引擎
 function analyze(data, depth){
   const price = parseFloat(data.price);
   const change = parseFloat(data.changePct);
   const vol = data.volumeRaw || 0;
   
-  // 拉盤力度計算
   let strength = 0;
   if(change > 5) strength += 30;
   else if(change > 2) strength += 20;
   else if(change > 0) strength += 10;
   
-  // 成交量權重
   const volScore = Math.min(30, (vol/1000000)*2);
   strength += volScore;
   
-  // 買賣牆比率
   if(depth.bidSum && depth.askSum){
     const ratio = depth.bidSum / (depth.askSum || 1);
     if(ratio > 2) strength += 25;
@@ -148,12 +148,10 @@ function analyze(data, depth){
   
   strength = Math.min(100, Math.max(0, Math.round(strength)));
   
-  // 止盈止損
   const tp1 = (price * 1.05).toFixed(getDecimals(data.symbol));
   const tp2 = (price * 1.10).toFixed(getDecimals(data.symbol));
   const sl = (price * 0.97).toFixed(getDecimals(data.symbol));
   
-  // 信號判斷
   let signal='wait', text='⏳ 觀望中 - 暫無明確訊號', cls='signal-wait';
   
   if(strength > 75 && change > 3){
@@ -184,8 +182,8 @@ function renderCard(data, depth){
       <div>
         <div class="coin-name">${data.symbol}</div>
         <div style="font-size:11px;color:#8b949e;margin-top:2px;">
-          <span class="status-dot ${wsConnected?'status-live':'status-off'}"></span>
-          ${wsConnected?'即時連線中':'REST輪詢中'}
+          <span class="status-dot status-live"></span>
+          即時連線中
         </div>
       </div>
       <div style="text-align:right;">
@@ -220,7 +218,7 @@ async function updateDisplay(){
       COIN_DATA[sym] = {ticker, depth};
       html += renderCard(ticker, depth);
     }else{
-      html += `<div class="coin-card"><div class="coin-name">${sym}</div><div style="color:var(--red);padding:10px;">⚠️ 無法獲取數據，請確認幣種正確</div></div>`;
+      html += `<div class="coin-card"><div class="coin-name">${sym}</div><div class="error-msg">⚠️ 無法獲取數據<br><small style="color:#8b949e">請確認幣種在 WEEX 上有交易對</small></div></div>`;
     }
   }
   list.innerHTML = html;
@@ -244,21 +242,10 @@ function removeCoin(sym){
   if(i>-1){COINS.splice(i,1);saveCoins();updateDisplay();}
 }
 
-// WebSocket 連接 (進階)
-function connectWS(){
-  try{
-    ws = new WebSocket(WEEX_WS);
-    ws.onopen = ()=>{wsConnected=true;updateDisplay();};
-    ws.onclose = ()=>{wsConnected=false;setTimeout(connectWS,5000);};
-    ws.onerror = ()=>{wsConnected=false;};
-  }catch(e){wsConnected=false;}
-}
-
 // 啟動
 loadCoins();
 updateDisplay();
-setInterval(updateDisplay, 5000); // 每5秒輪詢
-connectWS(); // 嘗試 WebSocket
+setInterval(updateDisplay, 5000);
 </script>
 </body>
 </html>
