@@ -1,401 +1,955 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>WEEX 拉盤監控</title>
-<style>
-:root{--green:#3fb950;--red:#f85149;--yellow:#d29922;--blue:#58a6ff;--purple:#a371f7;--cyan:#39c5bb;--orange:#f0883e;--bg:#0d1117;--card:#161b22;--border:#30363d;}
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#c9d1d9;padding:12px;min-height:100vh}
-.header{text-align:center;padding:8px 0 12px}
-.header h1{margin:0;font-size:22px;color:#fff;letter-spacing:1px}
-.header .sub{font-size:12px;color:#8b949e;margin-top:4px}
-.add-box{display:flex;gap:8px;margin-bottom:12px}
-.add-box input{flex:1;background:#21262d;border:1px solid var(--border);color:#fff;padding:10px 14px;border-radius:8px;font-size:15px;outline:none}
-.add-box input::placeholder{color:#6e7681}
-.add-box button{background:var(--green);border:none;color:#fff;padding:10px 18px;border-radius:8px;font-weight:600;font-size:15px;cursor:pointer}
-.add-box button:active{opacity:0.8}
-.coin-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;position:relative}
-.coin-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.coin-name{font-size:18px;font-weight:700;color:#fff}
-.coin-price{font-size:20px;font-weight:700;transition:all 0.3s}
-.price-up{color:var(--green)}.price-down{color:var(--red)}
-.price-flash-green{animation:flashGreen 0.5s}
-.price-flash-red{animation:flashRed 0.5s}
-@keyframes flashGreen{0%{background:rgba(63,185,80,0.3)}100%{background:transparent}}
-@keyframes flashRed{0%{background:rgba(248,81,73,0.3)}100%{background:transparent}}
-.coin-change{font-size:13px;padding:2px 8px;border-radius:6px;font-weight:600}
-.change-up{background:rgba(63,185,80,0.15);color:var(--green)}
-.change-down{background:rgba(248,81,73,0.15);color:var(--red)}
-.delete-btn{position:absolute;top:10px;right:10px;background:transparent;border:none;color:#6e7681;font-size:20px;cursor:pointer;padding:6px 10px;z-index:10}
-.delete-btn:active{color:var(--red);transform:scale(0.9)}
-.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
-.metric{background:#21262d;padding:10px;border-radius:8px;text-align:center}
-.metric-label{font-size:11px;color:#8b949e;margin-bottom:4px}
-.metric-value{font-size:15px;font-weight:700}
-.signal-box{padding:10px;border-radius:8px;margin-top:8px;font-size:14px;font-weight:600;text-align:center}
-.signal-buy{background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);color:var(--green)}
-.signal-sell{background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red)}
-.signal-hold{background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);color:var(--blue)}
-.signal-short{background:rgba(163,113,247,0.1);border:1px solid rgba(163,113,247,0.3);color:var(--purple)}
-.signal-wait{background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.3);color:var(--yellow)}
-.tp-sl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
-.tp,.sl{padding:8px;border-radius:6px;text-align:center;font-size:13px;font-weight:600}
-.tp{background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.2);color:var(--green)}
-.sl{background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.2);color:var(--red)}
-.strength-bar{height:6px;background:#21262d;border-radius:3px;margin-top:6px;overflow:hidden}
-.strength-fill{height:100%;border-radius:3px;transition:width 0.5s ease}
-.empty{text-align:center;padding:40px 20px;color:#6e7681;font-size:14px}
-.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-.status-live{background:var(--green)}.status-off{background:var(--red)}
-.last-update{font-size:11px;color:#6e7681;text-align:center;margin-top:4px}
-.volume-spike{color:var(--yellow);font-weight:700}
-.api-status{padding:8px 14px;background:#21262d;border-radius:8px;margin-bottom:12px;font-size:12px;display:flex;justify-content:space-between;align-items:center}
-.whale-box{padding:10px;border-radius:8px;margin-top:8px;text-align:center;font-size:14px;font-weight:600}
-.whale-in{background:rgba(57,197,187,0.08);border:1px solid rgba(57,197,187,0.25);color:var(--cyan)}
-.whale-out{background:rgba(240,136,62,0.08);border:1px solid rgba(240,136,62,0.25);color:var(--orange)}
-.whale-watch{background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.25);color:var(--yellow)}
-.entry-box{padding:10px;border-radius:8px;margin-top:8px;text-align:center;font-size:14px;font-weight:600}
-.entry-yes{background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.2);color:var(--green)}
-.entry-no{background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.2);color:var(--red)}
-.entry-caution{background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.2);color:var(--yellow)}
-.entry-short{background:rgba(163,113,247,0.08);border:1px solid rgba(163,113,247,0.2);color:var(--purple)}
-.alert-badge{position:absolute;top:10px;right:40px;background:var(--red);color:#fff;font-size:10px;padding:3px 8px;border-radius:10px;font-weight:700;animation:blink 1s infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-.history-mini{font-size:11px;color:#8b949e;margin-top:6px;text-align:center}
-.data-age{font-size:10px;color:#6e768e;text-align:right;margin-top:4px}
-.update-counter{font-size:11px;color:#8b949e;text-align:center;margin-top:4px}
-</style>
-</head>
-<body>
-<div class="header"><h1>🚀 WEEX 拉盤監控</h1><div class="sub">山寨幣莊家動向即時追蹤</div></div>
-
-<div class="api-status" id="apiStatus">
-  <span>🔌 API 狀態: 初始化中...</span>
-  <span id="apiMode" style="color:var(--yellow)">--</span>
-</div>
-
-<div class="add-box">
-  <input type="text" id="coinInput" placeholder="輸入幣種，如 BTC、ETH、PEPE" onkeypress="if(event.key==='Enter') addCoin()">
-  <button onclick="addCoin()">➕ 加入監控</button>
-</div>
-
-<div id="coinList"></div>
-<div class="last-update" id="lastUpdate"></div>
-<div class="update-counter" id="updateCounter">已更新 0 次</div>
-
-<script>
-const REST_API = 'https://api-spot.weex.com';
-const CORS_PROXY = 'https://corsproxy.io/?';
-let updateCount = 0;
-let apiWorking = false;
-const COINS = [];
-const COIN_DATA = {};
-const PRICE_HISTORY = {};
-let prevPrices = {};
-
-function loadCoins(){try{const s=localStorage.getItem('weex_coins');if(s)JSON.parse(s).forEach(c=>{if(!COINS.includes(c))COINS.push(c)})}catch(e){}}
-function saveCoins(){try{localStorage.setItem('weex_coins',JSON.stringify(COINS))}catch(e){}}
-
-function getDecimals(sym){
-  if(sym.includes('PEPE')) return 10;
-  if(sym.includes('DOGE')||sym.includes('SHIB')) return 6;
-  if(sym.includes('BTC')) return 2;
-  if(sym.includes('ETH')) return 2;
-  return 4;
-}
-
-function updateStatus(text, mode){
-  document.getElementById('apiStatus').innerHTML = `<span>${text}</span>`;
-  document.getElementById('apiMode').textContent = mode;
-}
-
-// 獲取最新價格（最即時）
-async function fetchLatestPrice(symbol){
-  try{
-    const url = CORS_PROXY + encodeURIComponent(`${REST_API}/api/v3/market/ticker/price?symbols=${symbol}`);
-    const res = await fetch(url);
-    const data = await res.json();
-    if(Array.isArray(data) && data.length > 0){
-      return parseFloat(data[0].price || 0);
-    }
-  }catch(e){}
-  return null;
-}
-
-// 獲取 24h 統計
-async function fetch24hData(symbol){
-  try{
-    const url = CORS_PROXY + encodeURIComponent(`${REST_API}/api/v3/market/ticker/24hr?symbols=${symbol}`);
-    const res = await fetch(url);
-    const data = await res.json();
-    if(Array.isArray(data) && data.length > 0){
-      const d = data[0];
-      return {
-        last: parseFloat(d.lastPrice || d.last || 0),
-        open: parseFloat(d.openPrice || d.open || 0),
-        vol: parseFloat(d.volume || d.baseVolume || 0),
-        high: parseFloat(d.highPrice || d.high || 0),
-        low: parseFloat(d.lowPrice || d.low || 0)
-      };
-    }
-  }catch(e){}
-  return null;
-}
-
-// 獲取深度
-async function fetchDepth(symbol){
-  try{
-    const url = CORS_PROXY + encodeURIComponent(`${REST_API}/api/v3/market/depth?symbol=${symbol}&limit=20`);
-    const res = await fetch(url);
-    const data = await res.json();
-    if(data && data.bids){
-      const bidSum = data.bids.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
-      const askSum = data.asks.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
-      return {bidDepth:(bidSum/1000000).toFixed(2)+'M',askDepth:(askSum/1000000).toFixed(2)+'M',bidSum,askSum};
-    }
-  }catch(e){}
-  return {bidDepth:'--',askDepth:'--',bidSum:0,askSum:0};
-}
-
-function getMockData(symbol){
-  const basePrices={BTCUSDT:65000,ETHUSDT:3500,DOGEUSDT:0.12,PEPEUSDT:0.000008,AKEUSDT:1.5};
-  const base=basePrices[symbol]||1.5;
-  const cycle=(Date.now()/30000)%100;
-  let priceChange=0,whaleAction='neutral';
-  if(cycle<20){priceChange=base*0.005;whaleAction='accumulating';}
-  else if(cycle<40){priceChange=base*0.02;whaleAction='pumping';}
-  else if(cycle<60){priceChange=base*0.003;whaleAction='holding';}
-  else if(cycle<80){priceChange=-base*0.015;whaleAction='dumping';}
-  else{priceChange=-base*0.005;whaleAction='exiting';}
-  const price=base+priceChange+(Math.random()-0.5)*base*0.003;
-  const changePct=((price-base)/base*100);
-  const vol=50000000+Math.random()*200000000;
-  if(!PRICE_HISTORY[symbol])PRICE_HISTORY[symbol]=[];
-  PRICE_HISTORY[symbol].push({price,changePct,vol,whaleAction,time:Date.now()});
-  if(PRICE_HISTORY[symbol].length>20)PRICE_HISTORY[symbol].shift();
-  return{
-    symbol,price:price.toFixed(getDecimals(symbol)),changePct:changePct.toFixed(2),
-    volume:(vol/1000000).toFixed(2)+'M',volumeRaw:vol,
-    high:(price*1.02).toFixed(getDecimals(symbol)),low:(price*0.98).toFixed(getDecimals(symbol)),
-    timestamp:Date.now(),mock:true
-  };
-}
-
-function analyzeCoin(symbol,data,depth){
-  const history=PRICE_HISTORY[symbol]||[];
-  const price=parseFloat(data.price);
-  const change=parseFloat(data.changePct);
-  const vol=data.volumeRaw;
-  
-  let whaleStatus='unknown',whaleText='❓ 莊家狀態不明',whaleClass='whale-watch';
-  if(history.length>=5){
-    const recent=history.slice(-5);
-    const actions=recent.map(h=>h.whaleAction);
-    const pumpCount=actions.filter(a=>a==='pumping'||a==='accumulating').length;
-    const dumpCount=actions.filter(a=>a==='dumping'||a==='exiting').length;
-    const avgVol=recent.reduce((a,b)=>a+b.vol,0)/recent.length;
-    const volSpike=vol>avgVol*1.3;
-    
-    if(pumpCount>=3&&volSpike){whaleStatus='in';whaleText='🐋 莊家還在！正在拉盤中';whaleClass='whale-in';}
-    else if(pumpCount>=2&&change>2){whaleStatus='in';whaleText='🐋 莊家還在，力度減弱';whaleClass='whale-in';}
-    else if(dumpCount>=3){whaleStatus='out';whaleText='🏃 莊家已離場，正在出貨';whaleClass='whale-out';}
-    else if(dumpCount>=2&&change<-2){whaleStatus='leaving';whaleText='⚠️ 莊家準備離場';whaleClass='whale-out';}
-    else if(volSpike&&change>0){whaleStatus='in';whaleText='🐋 莊家進場跡象';whaleClass='whale-in';}
-    else{whaleStatus='watch';whaleText='👀 觀察中，暫無莊家動作';whaleClass='whale-watch';}
-  }
-  
-  let entryStatus='wait',entryText='⏳ 暫不建議進場',entryClass='entry-caution',showAlert=false;
-  if(whaleStatus==='in'){
-    if(change>5&&vol>100000000){entryStatus='late';entryText='⚠️ 拉盤已高，追漲風險大';entryClass='entry-no';}
-    else if(change>2&&change<=5){entryStatus='yes';entryText='✅ 可以進場！拉盤剛開始';entryClass='entry-yes';showAlert=true;}
-    else if(change>0&&change<=2){entryStatus='yes';entryText='✅ 可以進場！莊家剛入場';entryClass='entry-yes';showAlert=true;}
-  }else if(whaleStatus==='out'){
-    entryStatus='short';entryText='🟣 開空時機！莊家出貨中';entryClass='entry-short';showAlert=true;
-  }else if(whaleStatus==='leaving'){
-    entryStatus='no';entryText='❌ 不要進場，準備下跌';entryClass='entry-no';
-  }else if(change<-3&&vol>80000000){
-    entryStatus='wait';entryText='⏳ 等莊家回補再進場';entryClass='entry-caution';
-  }
-  
-  let strength=0;
-  if(change>5)strength+=35;else if(change>2)strength+=25;else if(change>0)strength+=15;
-  if(vol>150000000)strength+=30;else if(vol>80000000)strength+=20;else if(vol>50000000)strength+=10;
-  if(depth.bidSum && depth.askSum){
-    const ratio = depth.bidSum / (depth.askSum || 1);
-    if(ratio > 2) strength += 15;
-    else if(ratio > 1.5) strength += 8;
-  }
-  if(whaleStatus==='in')strength+=20;else if(whaleStatus==='out')strength=Math.max(0,strength-30);
-  strength=Math.min(100,Math.max(0,strength));
-  
-  const tp1=(price*1.05).toFixed(getDecimals(symbol));
-  const tp2=(price*1.10).toFixed(getDecimals(symbol));
-  const sl=(price*0.97).toFixed(getDecimals(symbol));
-  
-  return{whaleStatus,whaleText,whaleClass,entryStatus,entryText,entryClass,strength,tp1,tp2,sl,showAlert};
-}
-
-function renderCard(data,depth){
-  const a=analyzeCoin(data.symbol,data,depth);
-  const up=parseFloat(data.changePct)>=0;
-  const sc=a.strength>70?'var(--green)':a.strength>40?'var(--yellow)':'var(--red)';
-  const volSpike=data.volumeRaw>100000000?'volume-spike':'';
-  const age = Math.round((Date.now() - data.timestamp) / 1000);
-  
-  return`
-  <div class="coin-card" id="card-${data.symbol}">
-    ${a.showAlert?'<div class="alert-badge">!</div>':''}
-    <button class="delete-btn" onclick="event.stopPropagation();removeCoin('${data.symbol}')">✕</button>
-    <div class="coin-header">
-      <div>
-        <div class="coin-name">${data.symbol}</div>
-        <div style="font-size:11px;color:#8b949e;margin-top:2px;">
-          <span class="status-dot ${data.mock?'status-off':'status-live'}"></span>
-          ${data.mock?'模擬數據':'REST API'}
-        </div>
-      </div>
-      <div style="text-align:right;">
-        <div class="coin-price ${up?'price-up':'price-down'}" id="price-${data.symbol}">$${data.price}</div>
-        <span class="coin-change ${up?'change-up':'change-down'}">${up?'+':''}${data.changePct}%</span>
-      </div>
-    </div>
-    <div class="metrics">
-      <div class="metric"><div class="metric-label">24H 成交量</div><div class="metric-value ${volSpike}">${data.volume}</div></div>
-      <div class="metric"><div class="metric-label">拉盤力度</div><div class="metric-value" style="color:${sc}">${a.strength}/100</div><div class="strength-bar"><div class="strength-fill" style="width:${a.strength}%;background:${sc}"></div></div></div>
-      <div class="metric"><div class="metric-label">買單深度</div><div class="metric-value" style="color:var(--green)">${depth.bidDepth}</div></div>
-      <div class="metric"><div class="metric-label">賣單深度</div><div class="metric-value" style="color:var(--red)">${depth.askDepth}</div></div>
-    </div>
-    <div class="whale-box ${a.whaleClass}">${a.whaleText}</div>
-    <div class="entry-box ${a.entryClass}">${a.entryText}</div>
-    ${a.entryStatus==='yes'||a.entryStatus==='late'?`
-    <div class="tp-sl">
-      <div class="tp">🎯 止盈1: $${a.tp1}<br><small style="opacity:0.7">止盈2: $${a.tp2}</small></div>
-      <div class="sl">🛑 止損: $${a.sl}</div>
-    </div>`:''}
-    <div class="history-mini">📊 已追蹤 ${(PRICE_HISTORY[data.symbol]||[]).length} 筆數據</div>
-    <div class="data-age">${data.mock?'模擬模式':'資料 '+age+' 秒前更新'}</div>
-  </div>`;
-}
-
-// 更新單一幣種（只改價格，不重新渲染）
-function updatePriceOnly(symbol, newPrice, changePct, vol){
-  const priceEl = document.getElementById(`price-${symbol}`);
-  if(!priceEl) return;
-  
-  const oldPrice = prevPrices[symbol] || parseFloat(priceEl.textContent.replace('$',''));
-  prevPrices[symbol] = newPrice;
-  
-  priceEl.textContent = '$' + newPrice.toFixed(getDecimals(symbol));
-  priceEl.className = `coin-price ${newPrice >= oldPrice ? 'price-up price-flash-green' : 'price-down price-flash-red'}`;
-  
-  // 移除閃爍動畫
-  setTimeout(() => {
-    priceEl.classList.remove('price-flash-green', 'price-flash-red');
-  }, 500);
-}
-
-async function updateDisplay(forceFull = false){
-  const list=document.getElementById('coinList');
-  if(COINS.length===0){list.innerHTML='<div class="empty">📭 尚未加入任何幣種<br>在上方輸入幣種開始監控</div>';return;}
-  
-  // 每 10 次完整更新一次，其他只更新價格
-  updateCount++;
-  document.getElementById('updateCounter').textContent = `已更新 ${updateCount} 次 | 最後: ${new Date().toLocaleTimeString('zh-TW')}`;
-  
-  const isFullUpdate = forceFull || updateCount % 10 === 1;
-  
-  for(const sym of COINS){
-    // 1. 獲取最新價格（每次必做）
-    const latestPrice = await fetchLatestPrice(sym);
-    
-    if(latestPrice){
-      apiWorking = true;
-      updateStatus('🟢 API 連線正常', 'REST 1秒');
-      
-      // 如果是完整更新，獲取所有數據
-      if(isFullUpdate){
-        const raw24h = await fetch24hData(sym);
-        const depth = await fetchDepth(sym);
-        
-        if(raw24h){
-          const change = raw24h.open>0?((raw24h.last-raw24h.open)/raw24h.open*100):0;
-          const data = {
-            symbol:sym, price:latestPrice.toFixed(getDecimals(sym)), changePct:change.toFixed(2),
-            volume:(raw24h.vol/1000000).toFixed(2)+'M', volumeRaw:raw24h.vol,
-            high:raw24h.high.toFixed(getDecimals(sym)), low:raw24h.low.toFixed(getDecimals(sym)),
-            timestamp:Date.now(), mock:false
-          };
-          COIN_DATA[sym] = {data, depth};
-          
-          // 儲存歷史
-          if(!PRICE_HISTORY[sym])PRICE_HISTORY[sym]=[];
-          PRICE_HISTORY[sym].push({price:latestPrice,changePct:change,vol:raw24h.vol,whaleAction:'unknown',time:Date.now()});
-          if(PRICE_HISTORY[sym].length>20)PRICE_HISTORY[sym].shift();
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WEEX 莊家監控 Pro - 即時價格與入場判斷</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background: #0a0e1a;
+            color: #e2e8f0;
         }
-      } else {
-        // 只更新價格
-        updatePriceOnly(sym, latestPrice);
-        continue;
-      }
-    } else {
-      apiWorking = false;
-      updateStatus('🟡 API 連線不穩', '模擬+REST');
-      if(!COIN_DATA[sym]){
-        const mock = getMockData(sym);
-        COIN_DATA[sym] = {data:mock, depth:{bidDepth:'--',askDepth:'--',bidSum:0,askSum:0}};
-      }
-    }
-  }
-  
-  // 完整渲染（只有完整更新時）
-  if(isFullUpdate){
-    let html='';
-    for(const sym of COINS){
-      const cd = COIN_DATA[sym];
-      if(cd){
-        html += renderCard(cd.data, cd.depth);
-        prevPrices[sym] = parseFloat(cd.data.price);
-      }
-    }
-    list.innerHTML=html;
-  }
-  
-  document.getElementById('lastUpdate').textContent='最後更新: '+new Date().toLocaleTimeString('zh-TW');
-}
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .neon-border {
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3), inset 0 0 10px rgba(59, 130, 246, 0.1);
+        }
+        .neon-green { box-shadow: 0 0 15px rgba(34, 197, 94, 0.4); }
+        .neon-red { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+        .neon-yellow { box-shadow: 0 0 15px rgba(234, 179, 8, 0.4); }
+        
+        @keyframes flash-green {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(34, 197, 94, 0.2); }
+        }
+        @keyframes flash-red {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(239, 68, 68, 0.2); }
+        }
+        .flash-up { animation: flash-green 0.5s ease; }
+        .flash-down { animation: flash-red 0.5s ease; }
+        
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        .pulse-dot::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        .depth-bar {
+            transition: width 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .signal-light {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .signal-green { background: radial-gradient(circle, #22c55e 0%, #15803d 100%); }
+        .signal-yellow { background: radial-gradient(circle, #eab308 0%, #a16207 100%); }
+        .signal-red { background: radial-gradient(circle, #ef4444 0%, #b91c1c 100%); }
+        
+        .whale-ring {
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+        
+        .grid-bg {
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+    </style>
+</head>
+<body class="grid-bg min-h-screen">
 
-function addCoin(){
-  const input=document.getElementById('coinInput');
-  let sym=input.value.trim().toUpperCase();
-  if(!sym)return;
-  if(!sym.includes('USDT'))sym+='USDT';
-  if(COINS.includes(sym)){alert('已在監控清單中');return;}
-  COINS.push(sym);
-  input.value='';
-  saveCoins();
-  updateDisplay(true);
-}
+    <!-- 頂部導航 -->
+    <nav class="bg-slate-900/90 backdrop-blur border-b border-slate-700 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">W</div>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-wide">WEEX 莊家監控 Pro</h1>
+                    <div class="flex items-center gap-2 text-xs text-slate-400">
+                        <span class="relative flex h-2 w-2">
+                            <span id="ws-status-dot" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span id="ws-status-core" class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                        </span>
+                        <span id="ws-status-text">未連線</span>
+                        <span class="text-slate-600">|</span>
+                        <span>更新: <span id="update-count" class="font-mono text-blue-400">0</span> 次</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <select id="ws-endpoint" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs text-white">
+                    <option value="wss://wbs.weex.com/ws">Spot: wbs.weex.com</option>
+                    <option value="wss://ws-contract.weex.com/v3/ws/public">合約 V3: ws-contract</option>
+                    <option value="wss://ws-contract.weex.com/v2/ws/public">合約 V2: ws-contract</option>
+                </select>
+                <button onclick="toggleSound()" id="sound-btn" class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-600 text-xs hover:bg-slate-700 transition">
+                    🔊 音效開啟
+                </button>
+                <button onclick="document.getElementById('settings-modal').classList.remove('hidden')" class="px-3 py-1.5 rounded-lg bg-blue-600 text-xs hover:bg-blue-700 transition font-bold">
+                    ⚙️ 設定
+                </button>
+            </div>
+        </div>
+    </nav>
 
-function removeCoin(sym){
-  if(!confirm(`確定要刪除 ${sym} 嗎？`))return;
-  const i=COINS.indexOf(sym);
-  if(i>-1){
-    COINS.splice(i,1);
-    delete PRICE_HISTORY[sym];
-    delete prevPrices[sym];
-    delete COIN_DATA[sym];
-    saveCoins();
-    updateDisplay(true);
-  }
-}
+    <!-- 主內容 -->
+    <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-loadCoins();
-updateDisplay(true);
+        <!-- 幣種輸入區 -->
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 neon-border">
+            <div class="flex flex-wrap gap-3 items-end">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs text-slate-400 mb-1 font-bold">新增監控幣種 (例如: BTCUSDT, ETHUSDT)</label>
+                    <input type="text" id="symbol-input" placeholder="輸入幣種..." 
+                           class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono uppercase"
+                           onkeypress="if(event.key==='Enter') addSymbol()">
+                </div>
+                <button onclick="addSymbol()" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition">
+                    ➕ 加入監控
+                </button>
+                <button onclick="clearAll()" class="px-6 py-2 bg-red-600/80 hover:bg-red-700 rounded-lg font-bold transition">
+                    🗑️ 清除全部
+                </button>
+            </div>
+            <div id="quick-symbols" class="flex flex-wrap gap-2 mt-3">
+                <span class="text-xs text-slate-500">快速添加:</span>
+                <button onclick="quickAdd('BTCUSDT')" class="px-2 py-1 rounded bg-slate-700 text-xs hover:bg-slate-600 transition">BTCUSDT</button>
+                <button onclick="quickAdd('ETHUSDT')" class="px-2 py-1 rounded bg-slate-700 text-xs hover:bg-slate-600 transition">ETHUSDT</button>
+                <button onclick="quickAdd('SOLUSDT')" class="px-2 py-1 rounded bg-slate-700 text-xs hover:bg-slate-600 transition">SOLUSDT</button>
+                <button onclick="quickAdd('XRPUSDT')" class="px-2 py-1 rounded bg-slate-700 text-xs hover:bg-slate-600 transition">XRPUSDT</button>
+                <button onclick="quickAdd('DOGEUSDT')" class="px-2 py-1 rounded bg-slate-700 text-xs hover:bg-slate-600 transition">DOGEUSDT</button>
+            </div>
+        </div>
 
-// 每 1 秒更新價格，每 10 秒完整更新
-setInterval(() => updateDisplay(false), 1000);
-</script>
+        <!-- 監控卡片網格 -->
+        <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <!-- 卡片將由 JS 動態生成 -->
+        </div>
+
+        <!-- 莊家行為分析面板 -->
+        <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-6 neon-border">
+            <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                <span class="text-2xl">🐋</span> 
+                莊家行為分析引擎
+                <span class="text-xs font-normal text-slate-400 bg-slate-700 px-2 py-1 rounded ml-auto">Beta v2.1</span>
+            </h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 偵測指標說明 -->
+                <div class="space-y-3">
+                    <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-2">偵測指標</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-center justify-between p-2 bg-slate-900/50 rounded">
+                            <span class="text-slate-400">大單掛單偵測</span>
+                            <span class="text-green-400 font-mono" id="stat-big-orders">0</span>
+                        </div>
+                        <div class="flex items-center justify-between p-2 bg-slate-900/50 rounded">
+                            <span class="text-slate-400">買賣牆比值</span>
+                            <span class="font-mono" id="stat-wall-ratio">--</span>
+                        </div>
+                        <div class="flex items-center justify-between p-2 bg-slate-900/50 rounded">
+                            <span class="text-slate-400">價格衝擊率</span>
+                            <span class="font-mono" id="stat-impact">--</span>
+                        </div>
+                        <div class="flex items-center justify-between p-2 bg-slate-900/50 rounded">
+                            <span class="text-slate-400">虛假掛單警報</span>
+                            <span class="text-yellow-400 font-mono" id="stat-spoofing">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 即時日誌 -->
+                <div class="lg:col-span-2">
+                    <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-2 mb-3">即時偵測日誌</h3>
+                    <div id="whale-log" class="bg-slate-900 rounded-lg p-3 h-48 overflow-y-auto font-mono text-xs space-y-1">
+                        <div class="text-slate-500 italic">等待數據流入...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 設定彈窗 -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-600 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <h3 class="text-xl font-bold mb-4">監控設定</h3>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">大單閾值 (USDT)</label>
+                    <input type="number" id="big-order-threshold" value="50000" 
+                           class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white font-mono">
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">莊家指數靈敏度</label>
+                    <select id="sensitivity" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white">
+                        <option value="low">低 (穩健型)</option>
+                        <option value="medium" selected>中 (平衡型)</option>
+                        <option value="high">高 (激進型)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm text-slate-400 mb-1">自動刷新頻率</label>
+                    <select id="refresh-rate" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white">
+                        <option value="100">100ms (極速)</option>
+                        <option value="500" selected>500ms (即時)</option>
+                        <option value="1000">1s (標準)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveSettings()" class="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg font-bold">儲存</button>
+                <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 全局狀態 ====================
+        const state = {
+            symbols: new Set(),
+            ws: null,
+            connected: false,
+            updateCount: 0,
+            soundEnabled: true,
+            bigOrderThreshold: 50000,
+            sensitivity: 'medium',
+            refreshRate: 500,
+            symbolData: {}, // 存儲每個幣種的數據
+            whaleLogs: [],
+            orderHistory: {}, // 用於偵測虛假掛單
+            lastPrices: {}
+        };
+
+        // 靈敏度配置
+        const sensitivityConfig = {
+            low: { whaleThreshold: 70, entryThreshold: 80, volatilityWeight: 0.3 },
+            medium: { whaleThreshold: 50, entryThreshold: 65, volatilityWeight: 0.5 },
+            high: { whaleThreshold: 30, entryThreshold: 45, volatilityWeight: 0.7 }
+        };
+
+        // ==================== WebSocket 連線 ====================
+        function connectWebSocket() {
+            const endpoint = document.getElementById('ws-endpoint').value;
+            
+            if (state.ws) {
+                state.ws.close();
+            }
+
+            updateStatus('connecting', '連線中...');
+            
+            try {
+                state.ws = new WebSocket(endpoint);
+                
+                state.ws.onopen = () => {
+                    state.connected = true;
+                    updateStatus('connected', '已連線');
+                    logWhale('system', `✅ WebSocket 已連線: ${endpoint}`);
+                    
+                    // 重新訂閱所有幣種
+                    state.symbols.forEach(symbol => subscribeSymbol(symbol));
+                };
+                
+                state.ws.onmessage = (event) => {
+                    handleMessage(JSON.parse(event.data));
+                };
+                
+                state.ws.onclose = () => {
+                    state.connected = false;
+                    updateStatus('disconnected', '已斷線');
+                    logWhale('warning', '⚠️ WebSocket 連線已關閉，5秒後重連...');
+                    setTimeout(connectWebSocket, 5000);
+                };
+                
+                state.ws.onerror = (error) => {
+                    updateStatus('error', '連線錯誤');
+                    logWhale('error', '❌ WebSocket 錯誤: ' + error.message);
+                };
+            } catch (e) {
+                updateStatus('error', '連線失敗');
+                logWhale('error', '❌ 無法建立連線: ' + e.message);
+            }
+        }
+
+        function updateStatus(status, text) {
+            const dot = document.getElementById('ws-status-dot');
+            const core = document.getElementById('ws-status-core');
+            const label = document.getElementById('ws-status-text');
+            
+            label.textContent = text;
+            
+            const colors = {
+                connected: { dot: 'bg-green-400', core: 'bg-green-500' },
+                connecting: { dot: 'bg-yellow-400', core: 'bg-yellow-500' },
+                disconnected: { dot: 'bg-red-400', core: 'bg-red-500' },
+                error: { dot: 'bg-red-600', core: 'bg-red-700' }
+            };
+            
+            const c = colors[status] || colors.disconnected;
+            dot.className = `animate-ping absolute inline-flex h-full w-full rounded-full ${c.dot} opacity-75`;
+            core.className = `relative inline-flex rounded-full h-2 w-2 ${c.core}`;
+        }
+
+        // ==================== 訂閱管理 ====================
+        function subscribeSymbol(symbol) {
+            if (!state.connected || !state.ws) return;
+            
+            const upperSymbol = symbol.toUpperCase();
+            
+            // 根據端點類型發送不同的訂閱格式
+            const endpoint = document.getElementById('ws-endpoint').value;
+            
+            if (endpoint.includes('contract')) {
+                // 合約端點格式
+                const subMsg = {
+                    "method": "SUBSCRIBE",
+                    "params": [
+                        `${upperSymbol}@ticker`,
+                        `${upperSymbol}@depth15`,
+                        `${upperSymbol}@bookTicker`
+                    ],
+                    "id": Date.now()
+                };
+                state.ws.send(JSON.stringify(subMsg));
+            } else {
+                // Spot 端點格式 (根據 WEEX 文件)
+                const subMsg = {
+                    "method": "SUBSCRIPTION",
+                    "params": [
+                        `spot@public.deals.v3.api@${upperSymbol}`,
+                        `spot@public.depth.v3.api@${upperSymbol}`
+                    ],
+                    "id": Date.now()
+                };
+                state.ws.send(JSON.stringify(subMsg));
+            }
+            
+            logWhale('info', `📡 訂閱: ${upperSymbol}`);
+        }
+
+        function unsubscribeSymbol(symbol) {
+            if (!state.connected || !state.ws) return;
+            
+            const upperSymbol = symbol.toUpperCase();
+            const endpoint = document.getElementById('ws-endpoint').value;
+            
+            if (endpoint.includes('contract')) {
+                const unsubMsg = {
+                    "method": "UNSUBSCRIBE",
+                    "params": [`${upperSymbol}@ticker`],
+                    "id": Date.now()
+                };
+                state.ws.send(JSON.stringify(unsubMsg));
+            }
+        }
+
+        // ==================== 數據處理 ====================
+        function handleMessage(data) {
+            state.updateCount++;
+            document.getElementById('update-count').textContent = state.updateCount;
+            
+            // 處理不同類型的數據
+            if (data.e === 'bookTicker' || data.e === '24hrTicker') {
+                handleTicker(data);
+            } else if (data.e === 'depth') {
+                handleDepth(data);
+            } else if (data.e === 'trade' || data.e === 'aggTrade') {
+                handleTrade(data);
+            } else if (data.type === 'ping') {
+                // 回應 ping
+                state.ws.send(JSON.stringify({ "method": "PONG", "id": 1 }));
+            }
+        }
+
+        function handleTicker(data) {
+            const symbol = data.s;
+            if (!symbol || !state.symbols.has(symbol)) return;
+            
+            const price = parseFloat(data.d?.c || data.c);
+            const prevPrice = state.lastPrices[symbol];
+            
+            if (!state.symbolData[symbol]) {
+                state.symbolData[symbol] = {
+                    price: price,
+                    high: parseFloat(data.d?.h || data.h),
+                    low: parseFloat(data.d?.l || data.l),
+                    volume: parseFloat(data.d?.v || data.v),
+                    bid: parseFloat(data.d?.b || data.b),
+                    ask: parseFloat(data.d?.a || data.a),
+                    bidQty: parseFloat(data.d?.B || data.B),
+                    askQty: parseFloat(data.d?.A || data.A),
+                    change24h: parseFloat(data.d?.P || data.P),
+                    history: [],
+                    depth: { bids: [], asks: [] }
+                };
+            }
+            
+            const symData = state.symbolData[symbol];
+            symData.price = price;
+            symData.bid = parseFloat(data.d?.b || data.b);
+            symData.ask = parseFloat(data.d?.a || data.a);
+            symData.bidQty = parseFloat(data.d?.B || data.B);
+            symData.askQty = parseFloat(data.d?.A || data.A);
+            
+            // 價格變動偵測
+            if (prevPrice) {
+                const change = ((price - prevPrice) / prevPrice) * 100;
+                symData.priceChange = change;
+                
+                // 大波動警報
+                if (Math.abs(change) > 1) {
+                    logWhale(change > 0 ? 'bull' : 'bear', 
+                        `${symbol} 價格${change > 0 ? '暴漲' : '暴跌'} ${Math.abs(change).toFixed(2)}%!`);
+                    if (state.soundEnabled) playAlert();
+                }
+            }
+            
+            state.lastPrices[symbol] = price;
+            
+            // 更新歷史
+            symData.history.push({ time: Date.now(), price: price });
+            if (symData.history.length > 100) symData.history.shift();
+            
+            updateCard(symbol);
+            analyzeWhaleActivity(symbol);
+        }
+
+        function handleDepth(data) {
+            const symbol = data.s;
+            if (!symbol || !state.symbols.has(symbol)) return;
+            
+            if (!state.symbolData[symbol]) return;
+            
+            const symData = state.symbolData[symbol];
+            symData.depth.bids = data.b || [];
+            symData.depth.asks = data.a || [];
+            
+            // 分析深度中的大單
+            analyzeDepthForWhales(symbol, data.b, data.a);
+            
+            updateCard(symbol);
+        }
+
+        function handleTrade(data) {
+            const symbol = data.s;
+            if (!symbol || !state.symbols.has(symbol)) return;
+            
+            const price = parseFloat(data.p);
+            const qty = parseFloat(data.q);
+            const value = price * qty;
+            
+            // 大單成交偵測
+            if (value >= state.bigOrderThreshold) {
+                const side = data.m ? '賣出' : '買入';
+                logWhale('whale', `🐋 ${symbol} 大單成交: ${side} ${qty.toFixed(4)} @ $${price.toFixed(2)} (價值 $${(value/1000).toFixed(1)}K)`);
+                if (state.soundEnabled) playAlert();
+            }
+        }
+
+        // ==================== 莊家分析引擎 ====================
+        function analyzeDepthForWhales(symbol, bids, asks) {
+            const threshold = state.bigOrderThreshold;
+            let bigBids = 0, bigAsks = 0;
+            
+            // 分析買方大單
+            bids.forEach(([price, qty]) => {
+                const value = parseFloat(price) * parseFloat(qty);
+                if (value >= threshold) {
+                    bigBids += value;
+                    logWhale('info', `📗 ${symbol} 買方大單: $${(value/1000).toFixed(1)}K @ $${parseFloat(price).toFixed(2)}`);
+                }
+            });
+            
+            // 分析賣方大單
+            asks.forEach(([price, qty]) => {
+                const value = parseFloat(price) * parseFloat(qty);
+                if (value >= threshold) {
+                    bigAsks += value;
+                    logWhale('info', `📕 ${symbol} 賣方大單: $${(value/1000).toFixed(1)}K @ $${parseFloat(price).toFixed(2)}`);
+                }
+            });
+            
+            // 更新統計
+            document.getElementById('stat-big-orders').textContent = 
+                Math.floor((bigBids + bigAsks) / 1000) + 'K';
+            
+            // 買賣牆比值
+            const ratio = bigAsks > 0 ? (bigBids / bigAsks).toFixed(2) : '∞';
+            document.getElementById('stat-wall-ratio').textContent = ratio;
+            document.getElementById('stat-wall-ratio').className = 
+                `font-mono ${bigBids > bigAsks ? 'text-green-400' : 'text-red-400'}`;
+        }
+
+        function analyzeWhaleActivity(symbol) {
+            const data = state.symbolData[symbol];
+            if (!data || data.history.length < 5) return;
+            
+            // 計算波動率
+            const prices = data.history.map(h => h.price);
+            const volatility = calculateVolatility(prices);
+            
+            // 計算莊家指數 (0-100)
+            const config = sensitivityConfig[state.sensitivity];
+            let whaleIndex = 50;
+            
+            // 基於買賣壓力
+            const bidPressure = data.bidQty / (data.bidQty + data.askQty);
+            whaleIndex += (bidPressure - 0.5) * 40;
+            
+            // 基於波動率
+            whaleIndex += volatility * config.volatilityWeight * 20;
+            
+            // 基於24h漲幅
+            whaleIndex += (data.change24h || 0) * 0.5;
+            
+            whaleIndex = Math.max(0, Math.min(100, whaleIndex));
+            data.whaleIndex = whaleIndex;
+            
+            // 入場評分
+            let entryScore = 0;
+            let signal = 'neutral';
+            
+            if (whaleIndex > config.entryThreshold && bidPressure > 0.6 && volatility < 0.5) {
+                entryScore = 85;
+                signal = 'strong_buy';
+            } else if (whaleIndex > config.whaleThreshold && bidPressure > 0.55) {
+                entryScore = 65;
+                signal = 'buy';
+            } else if (whaleIndex < 30 || bidPressure < 0.4) {
+                entryScore = 20;
+                signal = 'sell';
+            } else {
+                entryScore = 50;
+                signal = 'neutral';
+            }
+            
+            data.entryScore = entryScore;
+            data.signal = signal;
+            
+            // 更新顯示
+            updateWhaleIndicator(symbol, whaleIndex);
+            updateEntrySignal(symbol, signal, entryScore);
+            
+            // 虛假掛單偵測
+            detectSpoofing(symbol);
+        }
+
+        function calculateVolatility(prices) {
+            if (prices.length < 2) return 0;
+            const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
+            const variance = prices.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / prices.length;
+            return Math.sqrt(variance) / mean;
+        }
+
+        function detectSpoofing(symbol) {
+            const data = state.symbolData[symbol];
+            if (!data) return;
+            
+            // 簡單的虛假掛單偵測：價格快速變動但深度不變
+            const now = Date.now();
+            if (!state.orderHistory[symbol]) {
+                state.orderHistory[symbol] = [];
+            }
+            
+            state.orderHistory[symbol].push({
+                time: now,
+                price: data.price,
+                bid: data.bid,
+                ask: data.ask
+            });
+            
+            // 只保留最近10秒
+            state.orderHistory[symbol] = state.orderHistory[symbol].filter(h => now - h.time < 10000);
+            
+            // 偵測模式
+            const history = state.orderHistory[symbol];
+            if (history.length >= 5) {
+                const priceChanges = [];
+                for (let i = 1; i < history.length; i++) {
+                    priceChanges.push(Math.abs(history[i].price - history[i-1].price));
+                }
+                
+                const avgChange = priceChanges.reduce((a, b) => a + b, 0) / priceChanges.length;
+                const maxChange = Math.max(...priceChanges);
+                
+                // 如果價格變動異常大但深度變化小，可能是虛假掛單
+                if (maxChange > avgChange * 3 && maxChange > data.price * 0.001) {
+                    document.getElementById('stat-spoofing').textContent = 
+                        parseInt(document.getElementById('stat-spoofing').textContent) + 1;
+                    logWhale('warning', `⚠️ ${symbol} 偵測到可疑虛假掛單行為!`);
+                }
+            }
+        }
+
+        // ==================== UI 更新 ====================
+        function createCard(symbol) {
+            const card = document.createElement('div');
+            card.id = `card-${symbol}`;
+            card.className = 'bg-slate-800/80 border border-slate-700 rounded-xl p-4 neon-border transition-all duration-300';
+            
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h3 class="text-lg font-bold text-white font-mono">${symbol}</h3>
+                        <div class="text-xs text-slate-400 mt-1">莊家指數</div>
+                    </div>
+                    <button onclick="removeSymbol('${symbol}')" class="text-slate-500 hover:text-red-400 transition">✕</button>
+                </div>
+                
+                <!-- 價格顯示 -->
+                <div class="mb-4">
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-3xl font-bold font-mono text-white" id="price-${symbol}">--</span>
+                        <span class="text-sm font-mono" id="change-${symbol}">--</span>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-400 mt-1">
+                        <span>買: <span class="text-green-400 font-mono" id="bid-${symbol}">--</span></span>
+                        <span>賣: <span class="text-red-400 font-mono" id="ask-${symbol}">--</span></span>
+                    </div>
+                </div>
+                
+                <!-- 深度視覺化 -->
+                <div class="space-y-2 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-green-400 w-8">買</span>
+                        <div class="flex-1 h-4 bg-slate-900 rounded overflow-hidden">
+                            <div id="bid-bar-${symbol}" class="h-full bg-green-500/60 depth-bar" style="width: 50%"></div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-red-400 w-8">賣</span>
+                        <div class="flex-1 h-4 bg-slate-900 rounded overflow-hidden">
+                            <div id="ask-bar-${symbol}" class="h-full bg-red-500/60 depth-bar" style="width: 50%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 莊家指數環 -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="relative w-20 h-20">
+                        <svg class="w-20 h-20 whale-ring">
+                            <circle cx="40" cy="40" r="36" stroke="#1e293b" stroke-width="6" fill="none"/>
+                            <circle id="whale-ring-${symbol}" cx="40" cy="40" r="36" stroke="#3b82f6" stroke-width="6" fill="none"
+                                    stroke-dasharray="226" stroke-dashoffset="113" stroke-linecap="round"/>
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="text-lg font-bold font-mono" id="whale-index-${symbol}">--</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 入場訊號 -->
+                    <div class="text-center">
+                        <div class="text-xs text-slate-400 mb-1">入場訊號</div>
+                        <div id="signal-${symbol}" class="signal-light signal-yellow mx-auto"></div>
+                        <div class="text-xs font-bold mt-1" id="signal-text-${symbol}">觀望</div>
+                    </div>
+                </div>
+                
+                <!-- 詳細數據 -->
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div class="bg-slate-900/50 rounded p-2">
+                        <div class="text-slate-500">24h 高</div>
+                        <div class="font-mono text-white" id="high-${symbol}">--</div>
+                    </div>
+                    <div class="bg-slate-900/50 rounded p-2">
+                        <div class="text-slate-500">24h 低</div>
+                        <div class="font-mono text-white" id="low-${symbol}">--</div>
+                    </div>
+                    <div class="bg-slate-900/50 rounded p-2">
+                        <div class="text-slate-500">成交量</div>
+                        <div class="font-mono text-white" id="volume-${symbol}">--</div>
+                    </div>
+                    <div class="bg-slate-900/50 rounded p-2">
+                        <div class="text-slate-500">入場評分</div>
+                        <div class="font-mono" id="entry-score-${symbol}">--</div>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function updateCard(symbol) {
+            const data = state.symbolData[symbol];
+            if (!data) return;
+            
+            const priceEl = document.getElementById(`price-${symbol}`);
+            if (!priceEl) return; // 卡片可能還沒創建
+            
+            // 價格閃爍效果
+            const prevPrice = parseFloat(priceEl.textContent) || data.price;
+            if (data.price > prevPrice) {
+                priceEl.parentElement.parentElement.classList.add('flash-up');
+                setTimeout(() => priceEl.parentElement.parentElement.classList.remove('flash-up'), 500);
+            } else if (data.price < prevPrice) {
+                priceEl.parentElement.parentElement.classList.add('flash-down');
+                setTimeout(() => priceEl.parentElement.parentElement.classList.remove('flash-down'), 500);
+            }
+            
+            priceEl.textContent = data.price.toFixed(data.price < 1 ? 4 : 2);
+            
+            const changeEl = document.getElementById(`change-${symbol}`);
+            const change = data.change24h || 0;
+            changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+            changeEl.className = `text-sm font-mono ${change >= 0 ? 'text-green-400' : 'text-red-400'}`;
+            
+            document.getElementById(`bid-${symbol}`).textContent = data.bid.toFixed(data.bid < 1 ? 4 : 2);
+            document.getElementById(`ask-${symbol}`).textContent = data.ask.toFixed(data.ask < 1 ? 4 : 2);
+            document.getElementById(`high-${symbol}`).textContent = data.high ? data.high.toFixed(2) : '--';
+            document.getElementById(`low-${symbol}`).textContent = data.low ? data.low.toFixed(2) : '--';
+            document.getElementById(`volume-${symbol}`).textContent = data.volume ? (data.volume/1000000).toFixed(2) + 'M' : '--';
+            
+            // 深度條
+            const totalQty = data.bidQty + data.askQty;
+            if (totalQty > 0) {
+                document.getElementById(`bid-bar-${symbol}`).style.width = (data.bidQty / totalQty * 100) + '%';
+                document.getElementById(`ask-bar-${symbol}`).style.width = (data.askQty / totalQty * 100) + '%';
+            }
+        }
+
+        function updateWhaleIndicator(symbol, index) {
+            const ring = document.getElementById(`whale-ring-${symbol}`);
+            const text = document.getElementById(`whale-index-${symbol}`);
+            if (!ring || !text) return;
+            
+            const circumference = 2 * Math.PI * 36;
+            const offset = circumference - (index / 100) * circumference;
+            ring.style.strokeDashoffset = offset;
+            
+            // 顏色根據指數變化
+            let color = '#3b82f6';
+            if (index > 70) color = '#22c55e';
+            else if (index < 30) color = '#ef4444';
+            else if (index > 50) color = '#eab308';
+            ring.style.stroke = color;
+            
+            text.textContent = Math.round(index);
+            text.style.color = color;
+        }
+
+        function updateEntrySignal(symbol, signal, score) {
+            const light = document.getElementById(`signal-${symbol}`);
+            const text = document.getElementById(`signal-text-${symbol}`);
+            const scoreEl = document.getElementById(`entry-score-${symbol}`);
+            if (!light || !text) return;
+            
+            const configs = {
+                strong_buy: { class: 'signal-green', text: '積極入場', color: 'text-green-400' },
+                buy: { class: 'signal-green', text: '建議入場', color: 'text-green-400' },
+                neutral: { class: 'signal-yellow', text: '觀望', color: 'text-yellow-400' },
+                sell: { class: 'signal-red', text: '危險勿入', color: 'text-red-400' }
+            };
+            
+            const config = configs[signal] || configs.neutral;
+            light.className = `signal-light ${config.class} mx-auto`;
+            text.textContent = config.text;
+            text.className = `text-xs font-bold mt-1 ${config.color}`;
+            
+            scoreEl.textContent = score;
+            scoreEl.className = `font-mono ${config.color}`;
+            
+            // 強烈訊號音效
+            if (signal === 'strong_buy' && state.soundEnabled) {
+                playAlert();
+            }
+        }
+
+        // ==================== 日誌系統 ====================
+        function logWhale(type, message) {
+            const log = document.getElementById('whale-log');
+            const entry = document.createElement('div');
+            
+            const colors = {
+                system: 'text-blue-400',
+                info: 'text-slate-300',
+                whale: 'text-purple-400',
+                bull: 'text-green-400',
+                bear: 'text-red-400',
+                warning: 'text-yellow-400',
+                error: 'text-red-500'
+            };
+            
+            const time = new Date().toLocaleTimeString('zh-TW');
+            entry.className = `${colors[type] || 'text-slate-300'} border-l-2 border-slate-700 pl-2`;
+            entry.innerHTML = `<span class="text-slate-600 text-[10px]">[${time}]</span> ${message}`;
+            
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            
+            // 限制日誌數量
+            while (log.children.length > 100) {
+                log.removeChild(log.firstChild);
+            }
+        }
+
+        // ==================== 幣種管理 ====================
+        function addSymbol() {
+            const input = document.getElementById('symbol-input');
+            const symbol = input.value.trim().toUpperCase();
+            
+            if (!symbol) return;
+            if (state.symbols.has(symbol)) {
+                alert('此幣種已在監控列表中');
+                return;
+            }
+            
+            state.symbols.add(symbol);
+            input.value = '';
+            
+            // 創建卡片
+            const container = document.getElementById('cards-container');
+            container.appendChild(createCard(symbol));
+            
+            // 訂閱
+            subscribeSymbol(symbol);
+            
+            // 保存到 localStorage
+            saveSymbols();
+        }
+
+        function quickAdd(symbol) {
+            document.getElementById('symbol-input').value = symbol;
+            addSymbol();
+        }
+
+        function removeSymbol(symbol) {
+            state.symbols.delete(symbol);
+            unsubscribeSymbol(symbol);
+            delete state.symbolData[symbol];
+            
+            const card = document.getElementById(`card-${symbol}`);
+            if (card) card.remove();
+            
+            saveSymbols();
+        }
+
+        function clearAll() {
+            state.symbols.forEach(s => unsubscribeSymbol(s));
+            state.symbols.clear();
+            state.symbolData = {};
+            document.getElementById('cards-container').innerHTML = '';
+            saveSymbols();
+        }
+
+        function saveSymbols() {
+            localStorage.setItem('weex-monitor-symbols', JSON.stringify([...state.symbols]));
+        }
+
+        function loadSymbols() {
+            const saved = localStorage.getItem('weex-monitor-symbols');
+            if (saved) {
+                const symbols = JSON.parse(saved);
+                symbols.forEach(s => {
+                    state.symbols.add(s);
+                    document.getElementById('cards-container').appendChild(createCard(s));
+                });
+            }
+        }
+
+        // ==================== 設定 ====================
+        function saveSettings() {
+            state.bigOrderThreshold = parseInt(document.getElementById('big-order-threshold').value) || 50000;
+            state.sensitivity = document.getElementById('sensitivity').value;
+            state.refreshRate = parseInt(document.getElementById('refresh-rate').value) || 500;
+            
+            localStorage.setItem('weex-monitor-settings', JSON.stringify({
+                bigOrderThreshold: state.bigOrderThreshold,
+                sensitivity: state.sensitivity,
+                refreshRate: state.refreshRate
+            }));
+            
+            document.getElementById('settings-modal').classList.add('hidden');
+            logWhale('system', '⚙️ 設定已儲存');
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('weex-monitor-settings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                document.getElementById('big-order-threshold').value = settings.bigOrderThreshold || 50000;
+                document.getElementById('sensitivity').value = settings.sensitivity || 'medium';
+                document.getElementById('refresh-rate').value = settings.refreshRate || 500;
+                
+                state.bigOrderThreshold = settings.bigOrderThreshold || 50000;
+                state.sensitivity = settings.sensitivity || 'medium';
+                state.refreshRate = settings.refreshRate || 500;
+            }
+        }
+
+        // ==================== 音效 ====================
+        function toggleSound() {
+            state.soundEnabled = !state.soundEnabled;
+            document.getElementById('sound-btn').textContent = state.soundEnabled ? '🔊 音效開啟' : '🔇 音效關閉';
+        }
+
+        function playAlert() {
+            if (!state.soundEnabled) return;
+            
+            // 使用 Web Audio API 生成提示音
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.5);
+            } catch (e) {
+                console.log('音效播放失敗:', e);
+            }
+        }
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSettings();
+            loadSymbols();
+            connectWebSocket();
+            
+            // 端點切換時重新連線
+            document.getElementById('ws-endpoint').addEventListener('change', () => {
+                connectWebSocket();
+            });
+        });
+
+        // 頁面卸載時清理
+        window.addEventListener('beforeunload', () => {
+            if (state.ws) {
+                state.ws.close();
+            }
+        });
+    </script>
 </body>
 </html>
