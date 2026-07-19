@@ -5,19 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>WEEX 拉盤監控</title>
 <style>
-:root{--green:#3fb950;--red:#f85149;--yellow:#d29922;--blue:#58a6ff;--purple:#a371f7;--bg:#0d1117;--card:#161b22;--border:#30363d;}
+:root{--green:#3fb950;--red:#f85149;--yellow:#d29922;--blue:#58a6ff;--purple:#a371f7;--cyan:#39c5bb;--orange:#f0883e;--bg:#0d1117;--card:#161b22;--border:#30363d;}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#c9d1d9;padding:12px;min-height:100vh}
-.header{text-align:center;padding:8px 0 16px}
+.header{text-align:center;padding:8px 0 12px}
 .header h1{margin:0;font-size:22px;color:#fff;letter-spacing:1px}
 .header .sub{font-size:12px;color:#8b949e;margin-top:4px}
-.add-box{display:flex;gap:8px;margin-bottom:16px}
+.add-box{display:flex;gap:8px;margin-bottom:12px}
 .add-box input{flex:1;background:#21262d;border:1px solid var(--border);color:#fff;padding:10px 14px;border-radius:8px;font-size:15px;outline:none}
 .add-box input::placeholder{color:#6e7681}
 .add-box button{background:var(--green);border:none;color:#fff;padding:10px 18px;border-radius:8px;font-weight:600;font-size:15px;cursor:pointer}
 .add-box button:active{opacity:0.8}
-.coin-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;position:relative;animation:slideIn 0.3s ease}
-@keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.coin-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;position:relative}
 .coin-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .coin-name{font-size:18px;font-weight:700;color:#fff}
 .coin-price{font-size:20px;font-weight:700}
@@ -25,13 +24,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .coin-change{font-size:13px;padding:2px 8px;border-radius:6px;font-weight:600}
 .change-up{background:rgba(63,185,80,0.15);color:var(--green)}
 .change-down{background:rgba(248,81,73,0.15);color:var(--red)}
-.delete-btn{position:absolute;top:10px;right:10px;background:transparent;border:none;color:#6e7681;font-size:20px;cursor:pointer;padding:6px 10px;z-index:10;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.delete-btn{position:absolute;top:10px;right:10px;background:transparent;border:none;color:#6e7681;font-size:20px;cursor:pointer;padding:6px 10px;z-index:10}
 .delete-btn:active{color:var(--red);transform:scale(0.9)}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
 .metric{background:#21262d;padding:10px;border-radius:8px;text-align:center}
 .metric-label{font-size:11px;color:#8b949e;margin-bottom:4px}
 .metric-value{font-size:15px;font-weight:700}
-.signal-box{padding:10px;border-radius:8px;margin-top:10px;font-size:14px;font-weight:600;text-align:center}
+.signal-box{padding:10px;border-radius:8px;margin-top:8px;font-size:14px;font-weight:600;text-align:center}
 .signal-buy{background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);color:var(--green)}
 .signal-sell{background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red)}
 .signal-hold{background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);color:var(--blue)}
@@ -49,9 +48,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .status-live{background:var(--green)}.status-off{background:var(--red)}
 .last-update{font-size:11px;color:#6e7681;text-align:center;margin-top:4px}
 .volume-spike{color:var(--yellow);font-weight:700}
-.error-msg{color:var(--red);padding:10px;font-size:14px}
 .api-status{padding:8px 14px;background:#21262d;border-radius:8px;margin-bottom:12px;font-size:12px;display:flex;justify-content:space-between;align-items:center}
-.swipe-hint{font-size:11px;color:#6e7681;text-align:center;margin-bottom:8px}
+.whale-box{padding:10px;border-radius:8px;margin-top:8px;text-align:center;font-size:14px;font-weight:600}
+.whale-in{background:rgba(57,197,187,0.08);border:1px solid rgba(57,197,187,0.25);color:var(--cyan)}
+.whale-out{background:rgba(240,136,62,0.08);border:1px solid rgba(240,136,62,0.25);color:var(--orange)}
+.whale-watch{background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.25);color:var(--yellow)}
+.entry-box{padding:10px;border-radius:8px;margin-top:8px;text-align:center;font-size:14px;font-weight:600}
+.entry-yes{background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.2);color:var(--green)}
+.entry-no{background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.2);color:var(--red)}
+.entry-caution{background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.2);color:var(--yellow)}
+.entry-short{background:rgba(163,113,247,0.08);border:1px solid rgba(163,113,247,0.2);color:var(--purple)}
+.alert-badge{position:absolute;top:10px;right:40px;background:var(--red);color:#fff;font-size:10px;padding:3px 8px;border-radius:10px;font-weight:700;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.history-mini{font-size:11px;color:#8b949e;margin-top:6px;text-align:center}
 </style>
 </head>
 <body>
@@ -62,19 +71,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <span id="apiMode" style="color:var(--yellow)">自動切換</span>
 </div>
 
-<div class="add-box"><input type="text" id="coinInput" placeholder="輸入幣種，如 BTC、ETH、PEPE" onkeypress="if(event.key==='Enter') addCoin()"><button onclick="addCoin()">➕ 加入監控</button></div>
-<div class="swipe-hint">👆 點幣種卡片右上角的 ✕ 刪除 | 左滑也可刪除</div>
+<div class="add-box">
+  <input type="text" id="coinInput" placeholder="輸入幣種，如 BTC、ETH、PEPE" onkeypress="if(event.key==='Enter') addCoin()">
+  <button onclick="addCoin()">➕ 加入監控</button>
+</div>
+
 <div id="coinList"></div>
 <div class="last-update" id="lastUpdate"></div>
 
 <script>
-// ===== API 配置（v1 + v3 雙保險）=====
+// ===== API 配置 =====
 const API_V3 = 'https://api-spot.weex.com';
 const API_V1 = 'https://api.weex.com/api/spot/v1';
 let currentApi = 'v3';
 let apiWorking = false;
 const COINS = [];
 const COIN_DATA = {};
+const PRICE_HISTORY = {};
 
 function loadCoins(){try{const s=localStorage.getItem('weex_coins');if(s)JSON.parse(s).forEach(c=>{if(!COINS.includes(c))COINS.push(c)})}catch(e){}}
 function saveCoins(){try{localStorage.setItem('weex_coins',JSON.stringify(COINS))}catch(e){}}
@@ -87,218 +100,145 @@ function getDecimals(sym){
   return 4;
 }
 
-// 測試 API 連線
+// 測試 API
 async function testApiConnection(){
   const statusEl = document.getElementById('apiStatus');
   const modeEl = document.getElementById('apiMode');
-  
-  // 測試 v3
   try{
     const res = await fetch(`${API_V3}/api/v3/ping`, {method:'GET', mode:'cors'});
-    if(res.ok){
-      apiWorking = true; currentApi = 'v3';
-      statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--green)">WEEX v3 直連正常</span></span>';
-      modeEl.textContent = 'v3直連'; return;
-    }
+    if(res.ok){apiWorking=true;currentApi='v3';statusEl.innerHTML='<span>🔌 API 狀態: <span style="color:var(--green)">WEEX v3 直連正常</span></span>';modeEl.textContent='v3直連';return;}
   }catch(e){}
-  
-  // 測試 v1
   try{
     const res = await fetch(`${API_V1}/public/time`, {method:'GET', mode:'cors'});
     const json = await res.json();
-    if(json.code === '00000'){
-      apiWorking = true; currentApi = 'v1';
-      statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--green)">WEEX v1 直連正常</span></span>';
-      modeEl.textContent = 'v1直連'; return;
-    }
+    if(json.code==='00000'){apiWorking=true;currentApi='v1';statusEl.innerHTML='<span>🔌 API 狀態: <span style="color:var(--green)">WEEX v1 直連正常</span></span>';modeEl.textContent='v1直連';return;}
   }catch(e){}
-  
-  statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--red)">連線失敗，使用模擬數據</span></span>';
-  modeEl.textContent = '模擬模式';
-  apiWorking = false;
+  statusEl.innerHTML='<span>🔌 API 狀態: <span style="color:var(--yellow)">模擬模式運行中</span></span>';
+  modeEl.textContent='模擬';
+  apiWorking=false;
 }
 
-// v3 Ticker
-async function fetchTickerV3(symbol){
-  const res = await fetch(`${API_V3}/api/v3/market/ticker/24hr?symbols=${symbol}`);
-  const json = await res.json();
-  if(Array.isArray(json) && json.length > 0){
-    const d = json[0];
-    const last = parseFloat(d.lastPrice || d.last || 0);
-    const open = parseFloat(d.openPrice || d.open || last);
-    return {last, open, vol: parseFloat(d.volume || d.baseVolume || 0), high: parseFloat(d.highPrice || d.high || last), low: parseFloat(d.lowPrice || d.low || last), bid: parseFloat(d.bidPrice || d.bid || last*0.999), ask: parseFloat(d.askPrice || d.ask || last*1.001)};
-  }
-  return null;
-}
-
-// v1 Ticker
-async function fetchTickerV1(symbol){
-  const res = await fetch(`${API_V1}/market/ticker?symbol=${symbol}`);
-  const json = await res.json();
-  if(json.code === '00000' && json.data){
-    const d = json.data;
-    const last = parseFloat(d.last || 0);
-    const open = parseFloat(d.open24h || last);
-    return {last, open, vol: parseFloat(d.baseVolume || 0), high: parseFloat(d.high24h || last), low: parseFloat(d.low24h || last), bid: parseFloat(d.bid || last*0.999), ask: parseFloat(d.ask || last*1.001)};
-  }
-  return null;
-}
-
-// v3 Depth
-async function fetchDepthV3(symbol){
-  const res = await fetch(`${API_V3}/api/v3/market/depth?symbol=${symbol}&limit=20`);
-  const json = await res.json();
-  if(json && json.bids){
-    const bidSum = json.bids.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
-    const askSum = json.asks.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
-    return {bidDepth:(bidSum/1000000).toFixed(2)+'M',askDepth:(askSum/1000000).toFixed(2)+'M',bidSum,askSum};
-  }
-  return null;
-}
-
-// v1 Depth
-async function fetchDepthV1(symbol){
-  const res = await fetch(`${API_V1}/market/depth?symbol=${symbol}&limit=20`);
-  const json = await res.json();
-  if(json.code === '00000' && json.data){
-    const bids = json.data.bids || [];
-    const asks = json.data.asks || [];
-    const bidSum = bids.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
-    const askSum = asks.reduce((a,b)=>a+parseFloat(b[0]||0)*parseFloat(b[1]||0),0);
-    return {bidDepth:(bidSum/1000000).toFixed(2)+'M',askDepth:(askSum/1000000).toFixed(2)+'M',bidSum,askSum};
-  }
-  return null;
-}
-
+// Ticker
 async function fetchTicker(symbol){
   if(!apiWorking) return null;
   try{
-    if(currentApi === 'v3'){
-      const data = await fetchTickerV3(symbol);
-      if(data) return data;
-      // v3 失敗，嘗試 v1
-      currentApi = 'v1';
-      return await fetchTickerV1(symbol);
+    if(currentApi==='v3'){
+      const res = await fetch(`${API_V3}/api/v3/market/ticker/24hr?symbols=${symbol}`);
+      const json = await res.json();
+      if(Array.isArray(json)&&json.length>0){
+        const d=json[0];const last=parseFloat(d.lastPrice||d.last||0);const open=parseFloat(d.openPrice||d.open||last);
+        return{last,open,vol:parseFloat(d.volume||d.baseVolume||0),high:parseFloat(d.highPrice||d.high||last),low:parseFloat(d.lowPrice||d.low||last)};
+      }
     }else{
-      return await fetchTickerV1(symbol);
+      const res = await fetch(`${API_V1}/market/ticker?symbol=${symbol}`);
+      const json = await res.json();
+      if(json.code==='00000'&&json.data){
+        const d=json.data;const last=parseFloat(d.last||0);const open=parseFloat(d.open24h||last);
+        return{last,open,vol:parseFloat(d.baseVolume||0),high:parseFloat(d.high24h||last),low:parseFloat(d.low24h||last)};
+      }
     }
-  }catch(e){return null;}
-}
-
-async function fetchDepth(symbol){
-  if(!apiWorking) return null;
-  try{
-    if(currentApi === 'v3'){
-      const data = await fetchDepthV3(symbol);
-      if(data) return data;
-      currentApi = 'v1';
-      return await fetchDepthV1(symbol);
-    }else{
-      return await fetchDepthV1(symbol);
-    }
-  }catch(e){return null;}
-}
-
-function processTickerData(symbol, raw){
-  const last = raw.last;
-  const open = raw.open;
-  const change = open > 0 ? ((last - open) / open * 100) : 0;
-  return {
-    symbol,
-    price: last.toFixed(getDecimals(symbol)),
-    changePct: change.toFixed(2),
-    volume: (raw.vol/1000000).toFixed(2)+'M',
-    volumeRaw: raw.vol,
-    high: raw.high.toFixed(getDecimals(symbol)),
-    low: raw.low.toFixed(getDecimals(symbol)),
-    bid: raw.bid.toFixed(getDecimals(symbol)),
-    ask: raw.ask.toFixed(getDecimals(symbol)),
-    timestamp: Date.now()
-  };
+  }catch(e){}
+  return null;
 }
 
 // 模擬數據
 function getMockData(symbol){
-  const basePrices = {BTCUSDT:65000,ETHUSDT:3500,DOGEUSDT:0.12,PEPEUSDT:0.000008,AKEUSDT:1.5};
-  const base = basePrices[symbol] || 1.5;
-  const change = (Math.random()-0.5)*10;
-  const price = base * (1 + change/100);
-  const vol = Math.random()*100000000;
-  return {
-    symbol, price: price.toFixed(getDecimals(symbol)), changePct: change.toFixed(2),
-    volume: (vol/1000000).toFixed(2)+'M', volumeRaw: vol,
-    high: (price*1.02).toFixed(getDecimals(symbol)), low: (price*0.98).toFixed(getDecimals(symbol)),
-    bid: (price*0.999).toFixed(getDecimals(symbol)), ask: (price*1.001).toFixed(getDecimals(symbol)),
-    timestamp: Date.now(), mock: true
+  const basePrices={BTCUSDT:65000,ETHUSDT:3500,DOGEUSDT:0.12,PEPEUSDT:0.000008,AKEUSDT:1.5};
+  const base=basePrices[symbol]||1.5;
+  const cycle=(Date.now()/30000)%100;
+  let priceChange=0,whaleAction='neutral';
+  if(cycle<20){priceChange=base*0.005;whaleAction='accumulating';}
+  else if(cycle<40){priceChange=base*0.02;whaleAction='pumping';}
+  else if(cycle<60){priceChange=base*0.003;whaleAction='holding';}
+  else if(cycle<80){priceChange=-base*0.015;whaleAction='dumping';}
+  else{priceChange=-base*0.005;whaleAction='exiting';}
+  const price=base+priceChange+(Math.random()-0.5)*base*0.003;
+  const changePct=((price-base)/base*100);
+  const vol=50000000+Math.random()*200000000;
+  if(!PRICE_HISTORY[symbol])PRICE_HISTORY[symbol]=[];
+  PRICE_HISTORY[symbol].push({price,changePct,vol,whaleAction,time:Date.now()});
+  if(PRICE_HISTORY[symbol].length>20)PRICE_HISTORY[symbol].shift();
+  return{
+    symbol,price:price.toFixed(getDecimals(symbol)),changePct:changePct.toFixed(2),
+    volume:(vol/1000000).toFixed(2)+'M',volumeRaw:vol,
+    high:(price*1.02).toFixed(getDecimals(symbol)),low:(price*0.98).toFixed(getDecimals(symbol)),
+    timestamp:Date.now(),mock:true
   };
 }
 
-function getMockDepth(){
-  const bidSum = 1000000 + Math.random()*2000000;
-  const askSum = 800000 + Math.random()*1500000;
-  return {bidDepth:(bidSum/1000000).toFixed(2)+'M',askDepth:(askSum/1000000).toFixed(2)+'M',bidSum,askSum};
-}
-
-// 拉盤分析
-function analyze(data, depth){
-  const price = parseFloat(data.price);
-  const change = parseFloat(data.changePct);
-  const vol = data.volumeRaw || 0;
+// ===== 核心分析引擎 =====
+function analyzeCoin(symbol,data){
+  const history=PRICE_HISTORY[symbol]||[];
+  const price=parseFloat(data.price);
+  const change=parseFloat(data.changePct);
+  const vol=data.volumeRaw;
   
-  let strength = 0;
-  if(change > 5) strength += 30;
-  else if(change > 2) strength += 20;
-  else if(change > 0) strength += 10;
-  
-  const volScore = Math.min(30, (vol/1000000)*2);
-  strength += volScore;
-  
-  if(depth.bidSum && depth.askSum){
-    const ratio = depth.bidSum / (depth.askSum || 1);
-    if(ratio > 2) strength += 25;
-    else if(ratio > 1.5) strength += 15;
-    else if(ratio > 1) strength += 5;
+  // 1️⃣ 莊家是否還在？
+  let whaleStatus='unknown',whaleText='❓ 莊家狀態不明',whaleClass='whale-watch';
+  if(history.length>=5){
+    const recent=history.slice(-5);
+    const priceTrend=recent[recent.length-1].price-recent[0].price;
+    const actions=recent.map(h=>h.whaleAction);
+    const pumpCount=actions.filter(a=>a==='pumping'||a==='accumulating').length;
+    const dumpCount=actions.filter(a=>a==='dumping'||a==='exiting').length;
+    const avgVol=recent.reduce((a,b)=>a+b.vol,0)/recent.length;
+    const volSpike=vol>avgVol*1.3;
+    
+    if(pumpCount>=3&&volSpike){whaleStatus='in';whaleText='🐋 莊家還在！正在拉盤中';whaleClass='whale-in';}
+    else if(pumpCount>=2&&change>2){whaleStatus='in';whaleText='🐋 莊家還在，力度減弱';whaleClass='whale-in';}
+    else if(dumpCount>=3){whaleStatus='out';whaleText='🏃 莊家已離場，正在出貨';whaleClass='whale-out';}
+    else if(dumpCount>=2&&change<-2){whaleStatus='leaving';whaleText='⚠️ 莊家準備離場';whaleClass='whale-out';}
+    else if(volSpike&&change>0){whaleStatus='in';whaleText='🐋 莊家進場跡象';whaleClass='whale-in';}
+    else{whaleStatus='watch';whaleText='👀 觀察中，暫無莊家動作';whaleClass='whale-watch';}
   }
   
-  strength = Math.min(100, Math.max(0, Math.round(strength)));
+  // 2️⃣ 現在是否還能進場？
+  let entryStatus='wait',entryText='⏳ 暫不建議進場',entryClass='entry-caution',showAlert=false;
   
-  const tp1 = (price * 1.05).toFixed(getDecimals(data.symbol));
-  const tp2 = (price * 1.10).toFixed(getDecimals(data.symbol));
-  const sl = (price * 0.97).toFixed(getDecimals(data.symbol));
-  
-  let signal='wait', text='⏳ 觀望中 - 暫無明確訊號', cls='signal-wait';
-  
-  if(strength > 75 && change > 3){
-    signal='buy'; text='🟢 強烈進場！莊家大力拉盤'; cls='signal-buy';
-  }else if(strength > 60 && change > 1.5){
-    signal='buy_weak'; text='🟡 可進場 - 拉盤力度中等'; cls='signal-buy';
-  }else if(strength > 50 && change > 0.5){
-    signal='hold'; text='🔵 持倉觀察 - 拉盤持續中'; cls='signal-hold';
-  }else if(strength < 30 && change < -1.5){
-    signal='sell'; text='🔴 清倉！拉盤力度衰竭'; cls='signal-sell';
-  }else if(strength < 20 && change < -3){
-    signal='short'; text='🟣 可開空 - 莊家出貨中'; cls='signal-short';
+  if(whaleStatus==='in'){
+    if(change>5&&vol>100000000){entryStatus='late';entryText='⚠️ 拉盤已高，追漲風險大';entryClass='entry-no';}
+    else if(change>2&&change<=5){entryStatus='yes';entryText='✅ 可以進場！拉盤剛開始';entryClass='entry-yes';showAlert=true;}
+    else if(change>0&&change<=2){entryStatus='yes';entryText='✅ 可以進場！莊家剛入場';entryClass='entry-yes';showAlert=true;}
+  }else if(whaleStatus==='out'){
+    entryStatus='short';entryText='🟣 開空時機！莊家出貨中';entryClass='entry-short';showAlert=true;
+  }else if(whaleStatus==='leaving'){
+    entryStatus='no';entryText='❌ 不要進場，準備下跌';entryClass='entry-no';
+  }else if(change<-3&&vol>80000000){
+    entryStatus='wait';entryText='⏳ 等莊家回補再進場';entryClass='entry-caution';
   }
   
-  return {signal, text, cls, strength, tp1, tp2, sl};
+  // 拉盤力度
+  let strength=0;
+  if(change>5)strength+=35;else if(change>2)strength+=25;else if(change>0)strength+=15;
+  if(vol>150000000)strength+=30;else if(vol>80000000)strength+=20;else if(vol>50000000)strength+=10;
+  if(whaleStatus==='in')strength+=20;else if(whaleStatus==='out')strength=Math.max(0,strength-30);
+  strength=Math.min(100,Math.max(0,strength));
+  
+  // 止盈止損
+  const tp1=(price*1.05).toFixed(getDecimals(symbol));
+  const tp2=(price*1.10).toFixed(getDecimals(symbol));
+  const sl=(price*0.97).toFixed(getDecimals(symbol));
+  
+  return{whaleStatus,whaleText,whaleClass,entryStatus,entryText,entryClass,strength,tp1,tp2,sl,showAlert};
 }
 
-function renderCard(data, depth, isMock){
-  const a = analyze(data, depth);
-  const up = parseFloat(data.changePct) >= 0;
-  const sc = a.strength > 70 ? 'var(--green)' : a.strength > 40 ? 'var(--yellow)' : 'var(--red)';
-  const volSpike = data.volumeRaw > 50000000 ? 'volume-spike' : '';
-  const mockBadge = isMock ? '<span style="font-size:10px;color:var(--yellow);margin-left:6px;">[模擬]</span>' : '';
+// ===== 渲染 =====
+function renderCard(data){
+  const a=analyzeCoin(data.symbol,data);
+  const up=parseFloat(data.changePct)>=0;
+  const sc=a.strength>70?'var(--green)':a.strength>40?'var(--yellow)':'var(--red)';
+  const volSpike=data.volumeRaw>100000000?'volume-spike':'';
   
-  return `
-  <div class="coin-card" id="card-${data.symbol}" data-symbol="${data.symbol}">
-    <button class="delete-btn" onclick="event.stopPropagation();removeCoin('${data.symbol}')" ontouchstart="event.stopPropagation()">✕</button>
+  return`
+  <div class="coin-card" id="card-${data.symbol}">
+    ${a.showAlert?'<div class="alert-badge">!</div>':''}
+    <button class="delete-btn" onclick="event.stopPropagation();removeCoin('${data.symbol}')">✕</button>
     <div class="coin-header">
       <div>
-        <div class="coin-name">${data.symbol}${mockBadge}</div>
+        <div class="coin-name">${data.symbol}</div>
         <div style="font-size:11px;color:#8b949e;margin-top:2px;">
-          <span class="status-dot ${isMock?'status-off':'status-live'}"></span>
-          ${isMock?'模擬數據':'即時連線中'}
+          <span class="status-dot ${apiWorking?'status-live':'status-off'}"></span>
+          ${apiWorking?'即時連線中':'模擬數據'}
         </div>
       </div>
       <div style="text-align:right;">
@@ -309,74 +249,74 @@ function renderCard(data, depth, isMock){
     <div class="metrics">
       <div class="metric"><div class="metric-label">24H 成交量</div><div class="metric-value ${volSpike}">${data.volume}</div></div>
       <div class="metric"><div class="metric-label">拉盤力度</div><div class="metric-value" style="color:${sc}">${a.strength}/100</div><div class="strength-bar"><div class="strength-fill" style="width:${a.strength}%;background:${sc}"></div></div></div>
-      <div class="metric"><div class="metric-label">買單深度</div><div class="metric-value" style="color:var(--green)">${depth.bidDepth||'--'}</div></div>
-      <div class="metric"><div class="metric-label">賣單深度</div><div class="metric-value" style="color:var(--red)">${depth.askDepth||'--'}</div></div>
     </div>
-    <div class="signal-box ${a.cls}">${a.text}</div>
-    ${a.signal==='buy'||a.signal==='buy_weak'||a.signal==='hold'?`
+    <div class="whale-box ${a.whaleClass}">${a.whaleText}</div>
+    <div class="entry-box ${a.entryClass}">${a.entryText}</div>
+    ${a.entryStatus==='yes'||a.entryStatus==='late'?`
     <div class="tp-sl">
       <div class="tp">🎯 止盈1: $${a.tp1}<br><small style="opacity:0.7">止盈2: $${a.tp2}</small></div>
       <div class="sl">🛑 止損: $${a.sl}</div>
     </div>`:''}
+    <div class="history-mini">📊 已追蹤 ${(PRICE_HISTORY[data.symbol]||[]).length} 筆數據</div>
   </div>`;
 }
 
 async function updateDisplay(){
-  const list = document.getElementById('coinList');
+  const list=document.getElementById('coinList');
   if(COINS.length===0){list.innerHTML='<div class="empty">📭 尚未加入任何幣種<br>在上方輸入幣種開始監控</div>';return;}
   
-  let html = '';
+  let html='';
   for(const sym of COINS){
-    let ticker, depth, isMock = false;
-    
+    let data;
     if(apiWorking){
-      const raw = await fetchTicker(sym);
+      const raw=await fetchTicker(sym);
       if(raw){
-        ticker = processTickerData(sym, raw);
-        const rawDepth = await fetchDepth(sym);
-        depth = rawDepth || {bidDepth:'--',askDepth:'--',bidSum:0,askSum:0};
+        const change=raw.open>0?((raw.last-raw.open)/raw.open*100):0;
+        data={
+          symbol:sym,price:raw.last.toFixed(getDecimals(sym)),changePct:change.toFixed(2),
+          volume:(raw.vol/1000000).toFixed(2)+'M',volumeRaw:raw.vol,
+          high:raw.high.toFixed(getDecimals(sym)),low:raw.low.toFixed(getDecimals(sym)),
+          timestamp:Date.now(),mock:false
+        };
+        if(!PRICE_HISTORY[sym])PRICE_HISTORY[sym]=[];
+        PRICE_HISTORY[sym].push({price:raw.last,changePct:change,vol:raw.vol,whaleAction:'unknown',time:Date.now()});
+        if(PRICE_HISTORY[sym].length>20)PRICE_HISTORY[sym].shift();
       }
     }
-    
-    if(!ticker){
-      ticker = getMockData(sym);
-      depth = getMockDepth();
-      isMock = true;
-    }
-    
-    COIN_DATA[sym] = {ticker, depth};
-    html += renderCard(ticker, depth, isMock);
+    if(!data)data=getMockData(sym);
+    COIN_DATA[sym]=data;
+    html+=renderCard(data);
   }
-  list.innerHTML = html;
-  document.getElementById('lastUpdate').textContent = '最後更新: ' + new Date().toLocaleTimeString('zh-TW');
+  list.innerHTML=html;
+  document.getElementById('lastUpdate').textContent='最後更新: '+new Date().toLocaleTimeString('zh-TW');
 }
 
 function addCoin(){
-  const input = document.getElementById('coinInput');
-  let sym = input.value.trim().toUpperCase();
-  if(!sym) return;
-  if(!sym.includes('USDT')) sym += 'USDT';
+  const input=document.getElementById('coinInput');
+  let sym=input.value.trim().toUpperCase();
+  if(!sym)return;
+  if(!sym.includes('USDT'))sym+='USDT';
   if(COINS.includes(sym)){alert('已在監控清單中');return;}
   COINS.push(sym);
-  input.value = '';
+  input.value='';
   saveCoins();
   updateDisplay();
 }
 
 function removeCoin(sym){
-  if(!confirm(`確定要刪除 ${sym} 嗎？`)) return;
-  const i = COINS.indexOf(sym);
+  if(!confirm(`確定要刪除 ${sym} 嗎？`))return;
+  const i=COINS.indexOf(sym);
   if(i>-1){
     COINS.splice(i,1);
+    delete PRICE_HISTORY[sym];
     saveCoins();
     updateDisplay();
   }
 }
 
-// 啟動
 loadCoins();
-testApiConnection().then(() => updateDisplay());
-setInterval(() => {testApiConnection().then(() => updateDisplay());}, 10000);
+testApiConnection().then(()=>updateDisplay());
+setInterval(()=>{testApiConnection().then(()=>updateDisplay());},5000);
 </script>
 </body>
 </html>
