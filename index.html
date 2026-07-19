@@ -80,10 +80,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <div class="last-update" id="lastUpdate"></div>
 
 <script>
-// ===== API 配置 =====
-const API_V3 = 'https://api-spot.weex.com';
-const API_V1 = 'https://api.weex.com/api/spot/v1';
-let currentApi = 'v3';
+// ===== CORS Proxy 列表（自動輪詢）=====
+const CORS_PROXIES = [
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+  'https://api.codetabs.com/v1/proxy?quest=',
+];
+let proxyIndex = 0;
+function getProxy(){return CORS_PROXIES[proxyIndex];}
+function nextProxy(){proxyIndex=(proxyIndex+1)%CORS_PROXIES.length;}
+
+// WEEX API
+const WEEX_API = 'https://api-spot.weex.com';
 let apiWorking = false;
 const COINS = [];
 const COIN_DATA = {};
@@ -100,44 +108,58 @@ function getDecimals(sym){
   return 4;
 }
 
-// 測試 API
+// 透過 CORS Proxy 發送請求
+async function fetchViaProxy(url){
+  const proxyUrl = getProxy() + encodeURIComponent(url);
+  const res = await fetch(proxyUrl);
+  if(!res.ok) throw new Error('Proxy error: '+res.status);
+  return res.json();
+}
+
+// 測試 API 連線
 async function testApiConnection(){
   const statusEl = document.getElementById('apiStatus');
   const modeEl = document.getElementById('apiMode');
-  try{
-    const res = await fetch(`${API_V3}/api/v3/ping`, {method:'GET', mode:'cors'});
-    if(res.ok){apiWorking=true;currentApi='v3';statusEl.innerHTML='<span>🔌 API 狀態: <span style="color:var(--green)">WEEX v3 直連正常</span></span>';modeEl.textContent='v3直連';return;}
-  }catch(e){}
-  try{
-    const res = await fetch(`${API_V1}/public/time`, {method:'GET', mode:'cors'});
-    const json = await res.json();
-    if(json.code==='00000'){apiWorking=true;currentApi='v1';statusEl.innerHTML='<span>🔌 API 狀態: <span style="color:var(--green)">WEEX v1 直連正常</span></span>';modeEl.textContent='v1直連';return;}
-  }catch(e){}
-  statusEl.innerHTML='<span>🔌 API 狀態: <span style="color:var(--yellow)">模擬模式運行中</span></span>';
-  modeEl.textContent='模擬';
-  apiWorking=false;
+  
+  for(let i=0;i<CORS_PROXIES.length;i++){
+    try{
+      const data = await fetchViaProxy(`${WEEX_API}/api/v3/ping`);
+      if(data){
+        apiWorking = true;
+        statusEl.innerHTML = `<span>🔌 API 狀態: <span style="color:var(--green)">WEEX 連線正常 (Proxy ${i+1})</span></span>`;
+        modeEl.textContent = `Proxy${i+1}`;
+        return;
+      }
+    }catch(e){
+      nextProxy();
+    }
+  }
+  
+  statusEl.innerHTML = '<span>🔌 API 狀態: <span style="color:var(--yellow)">模擬模式運行中</span></span>';
+  modeEl.textContent = '模擬';
+  apiWorking = false;
 }
 
-// Ticker
+// 獲取 Ticker
 async function fetchTicker(symbol){
   if(!apiWorking) return null;
   try{
-    if(currentApi==='v3'){
-      const res = await fetch(`${API_V3}/api/v3/market/ticker/24hr?symbols=${symbol}`);
-      const json = await res.json();
-      if(Array.isArray(json)&&json.length>0){
-        const d=json[0];const last=parseFloat(d.lastPrice||d.last||0);const open=parseFloat(d.openPrice||d.open||last);
-        return{last,open,vol:parseFloat(d.volume||d.baseVolume||0),high:parseFloat(d.highPrice||d.high||last),low:parseFloat(d.lowPrice||d.low||last)};
-      }
-    }else{
-      const res = await fetch(`${API_V1}/market/ticker?symbol=${symbol}`);
-      const json = await res.json();
-      if(json.code==='00000'&&json.data){
-        const d=json.data;const last=parseFloat(d.last||0);const open=parseFloat(d.open24h||last);
-        return{last,open,vol:parseFloat(d.baseVolume||0),high:parseFloat(d.high24h||last),low:parseFloat(d.low24h||last)};
-      }
+    const data = await fetchViaProxy(`${WEEX_API}/api/v3/market/ticker/24hr?symbols=${symbol}`);
+    if(Array.isArray(data) && data.length > 0){
+      const d = data[0];
+      const last = parseFloat(d.lastPrice || d.last || 0);
+      const open = parseFloat(d.openPrice || d.open || last);
+      return {
+        last, open,
+        vol: parseFloat(d.volume || d.baseVolume || 0),
+        high: parseFloat(d.highPrice || d.high || last),
+        low: parseFloat(d.lowPrice || d.low || last)
+      };
     }
-  }catch(e){}
+  }catch(e){
+    // 嘗試下一個 proxy
+    nextProxy();
+  }
   return null;
 }
 
@@ -177,7 +199,6 @@ function analyzeCoin(symbol,data){
   let whaleStatus='unknown',whaleText='❓ 莊家狀態不明',whaleClass='whale-watch';
   if(history.length>=5){
     const recent=history.slice(-5);
-    const priceTrend=recent[recent.length-1].price-recent[0].price;
     const actions=recent.map(h=>h.whaleAction);
     const pumpCount=actions.filter(a=>a==='pumping'||a==='accumulating').length;
     const dumpCount=actions.filter(a=>a==='dumping'||a==='exiting').length;
