@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WEEX 拉盤監控</title>
+<style>
+:root{--green:#3fb950;--red:#f85149;--yellow:#d29922;--blue:#58a6ff;--purple:#a371f7;--bg:#0d1117;--card:#161b22;--border:#30363d;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#c9d1d9;padding:12px;min-height:100vh}
+.header{text-align:center;padding:8px 0 16px}
+.header h1{margin:0;font-size:22px;color:#fff;letter-spacing:1px}
+.header .sub{font-size:12px;color:#8b949e;margin-top:4px}
+.add-box{display:flex;gap:8px;margin-bottom:16px}
+.add-box input{flex:1;background:#21262d;border:1px solid var(--border);color:#fff;padding:10px 14px;border-radius:8px;font-size:15px;outline:none}
+.add-box input::placeholder{color:#6e7681}
+.add-box button{background:var(--green);border:none;color:#fff;padding:10px 18px;border-radius:8px;font-weight:600;font-size:15px;cursor:pointer}
+.add-box button:active{opacity:0.8}
+.coin-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;position:relative;animation:slideIn 0.3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.coin-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.coin-name{font-size:18px;font-weight:700;color:#fff}
+.coin-price{font-size:20px;font-weight:700}
+.price-up{color:var(--green)}.price-down{color:var(--red)}
+.coin-change{font-size:13px;padding:2px 8px;border-radius:6px;font-weight:600}
+.change-up{background:rgba(63,185,80,0.15);color:var(--green)}
+.change-down{background:rgba(248,81,73,0.15);color:var(--red)}
+.delete-btn{position:absolute;top:10px;right:10px;background:transparent;border:none;color:#6e7681;font-size:18px;cursor:pointer;padding:4px 8px}
+.delete-btn:active{color:var(--red)}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.metric{background:#21262d;padding:10px;border-radius:8px;text-align:center}
+.metric-label{font-size:11px;color:#8b949e;margin-bottom:4px}
+.metric-value{font-size:15px;font-weight:700}
+.signal-box{padding:10px;border-radius:8px;margin-top:10px;font-size:14px;font-weight:600;text-align:center}
+.signal-buy{background:rgba(63,185,80,0.1);border:1px solid rgba(63,185,80,0.3);color:var(--green)}
+.signal-sell{background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red)}
+.signal-hold{background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);color:var(--blue)}
+.signal-short{background:rgba(163,113,247,0.1);border:1px solid rgba(163,113,247,0.3);color:var(--purple)}
+.signal-wait{background:rgba(210,153,34,0.1);border:1px solid rgba(210,153,34,0.3);color:var(--yellow)}
+.tp-sl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.tp,.sl{padding:8px;border-radius:6px;text-align:center;font-size:13px;font-weight:600}
+.tp{background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.2);color:var(--green)}
+.sl{background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.2);color:var(--red)}
+.strength-bar{height:6px;background:#21262d;border-radius:3px;margin-top:6px;overflow:hidden}
+.strength-fill{height:100%;border-radius:3px;transition:width 0.5s ease}
+.empty{text-align:center;padding:40px 20px;color:#6e7681;font-size:14px}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.status-live{background:var(--green)}.status-off{background:var(--red)}
+.last-update{font-size:11px;color:#6e7681;text-align:center;margin-top:4px}
+.volume-spike{color:var(--yellow);font-weight:700}
+</style>
+</head>
+<body>
+<div class="header"><h1>🚀 WEEX 拉盤監控</h1><div class="sub">山寨幣莊家動向即時追蹤</div></div>
+<div class="add-box"><input type="text" id="coinInput" placeholder="輸入幣種，如 BTCUSDT、PEPEUSDT" onkeypress="if(event.key==='Enter') addCoin()"><button onclick="addCoin()">➕ 加入監控</button></div>
+<div id="coinList"></div>
+<div class="last-update" id="lastUpdate"></div>
+
+<script>
+// ===== WEEX API 配置 =====
+const WEEX_REST = 'https://api.weex.com';
+const WEEX_WS = 'wss://wbs.weex.com/ws';
+const COINS = [];
+const COIN_DATA = {};
+let ws = null;
+let wsConnected = false;
+
+// 從 localStorage 讀取
+function loadCoins(){try{const s=localStorage.getItem('weex_coins');if(s)JSON.parse(s).forEach(c=>{if(!COINS.includes(c))COINS.push(c)})}catch(e){}}
+function saveCoins(){try{localStorage.setItem('weex_coins',JSON.stringify(COINS))}catch(e){}}
+
+// 獲取 ticker 數據 (REST)
+async function fetchTicker(symbol){
+  try{
+    const res = await fetch(`${WEEX_REST}/api/spot/v1/market/ticker?symbol=${symbol}`);
+    const json = await res.json();
+    if(json.code==='00000' && json.data){
+      const d = json.data;
+      return {
+        symbol,
+        price: parseFloat(d.last).toFixed(getDecimals(symbol)),
+        changePct: ((parseFloat(d.last)-parseFloat(d.open24h))/parseFloat(d.open24h)*100).toFixed(2),
+        volume: (parseFloat(d.baseVolume)/1000000).toFixed(2)+'M',
+        volumeRaw: parseFloat(d.baseVolume),
+        high: parseFloat(d.high24h).toFixed(getDecimals(symbol)),
+        low: parseFloat(d.low24h).toFixed(getDecimals(symbol)),
+        bid: parseFloat(d.bid).toFixed(getDecimals(symbol)),
+        ask: parseFloat(d.ask).toFixed(getDecimals(symbol)),
+        timestamp: Date.now()
+      };
+    }
+  }catch(e){console.error('ticker error',e)}
+  return null;
+}
+
+// 獲取深度數據
+async function fetchDepth(symbol){
+  try{
+    const res = await fetch(`${WEEX_REST}/api/spot/v1/market/depth?symbol=${symbol}&limit=20`);
+    const json = await res.json();
+    if(json.code==='00000' && json.data){
+      const bids = json.data.bids || [];
+      const asks = json.data.asks || [];
+      const bidSum = bids.reduce((a,b)=>a+parseFloat(b[0])*parseFloat(b[1]),0);
+      const askSum = asks.reduce((a,b)=>a+parseFloat(b[0])*parseFloat(b[1]),0);
+      return {
+        bidDepth: (bidSum/1000000).toFixed(2)+'M',
+        askDepth: (askSum/1000000).toFixed(2)+'M',
+        bidSum, askSum
+      };
+    }
+  }catch(e){}
+  return {bidDepth:'--',askDepth:'--',bidSum:0,askSum:0};
+}
+
+function getDecimals(sym){
+  if(sym.includes('PEPE')) return 10;
+  if(sym.includes('DOGE')||sym.includes('SHIB')) return 6;
+  if(sym.includes('BTC')) return 2;
+  if(sym.includes('ETH')) return 2;
+  return 4;
+}
+
+// 拉盤分析引擎
+function analyze(data, depth){
+  const price = parseFloat(data.price);
+  const change = parseFloat(data.changePct);
+  const vol = data.volumeRaw || 0;
+  
+  // 拉盤力度計算
+  let strength = 0;
+  if(change > 5) strength += 30;
+  else if(change > 2) strength += 20;
+  else if(change > 0) strength += 10;
+  
+  // 成交量權重
+  const volScore = Math.min(30, (vol/1000000)*2);
+  strength += volScore;
+  
+  // 買賣牆比率
+  if(depth.bidSum && depth.askSum){
+    const ratio = depth.bidSum / (depth.askSum || 1);
+    if(ratio > 2) strength += 25;
+    else if(ratio > 1.5) strength += 15;
+    else if(ratio > 1) strength += 5;
+  }
+  
+  strength = Math.min(100, Math.max(0, Math.round(strength)));
+  
+  // 止盈止損
+  const tp1 = (price * 1.05).toFixed(getDecimals(data.symbol));
+  const tp2 = (price * 1.10).toFixed(getDecimals(data.symbol));
+  const sl = (price * 0.97).toFixed(getDecimals(data.symbol));
+  
+  // 信號判斷
+  let signal='wait', text='⏳ 觀望中 - 暫無明確訊號', cls='signal-wait';
+  
+  if(strength > 75 && change > 3){
+    signal='buy'; text='🟢 強烈進場！莊家大力拉盤'; cls='signal-buy';
+  }else if(strength > 60 && change > 1.5){
+    signal='buy_weak'; text='🟡 可進場 - 拉盤力度中等'; cls='signal-buy';
+  }else if(strength > 50 && change > 0.5){
+    signal='hold'; text='🔵 持倉觀察 - 拉盤持續中'; cls='signal-hold';
+  }else if(strength < 30 && change < -1.5){
+    signal='sell'; text='🔴 清倉！拉盤力度衰竭'; cls='signal-sell';
+  }else if(strength < 20 && change < -3){
+    signal='short'; text='🟣 可開空 - 莊家出貨中'; cls='signal-short';
+  }
+  
+  return {signal, text, cls, strength, tp1, tp2, sl};
+}
+
+function renderCard(data, depth){
+  const a = analyze(data, depth);
+  const up = parseFloat(data.changePct) >= 0;
+  const sc = a.strength > 70 ? 'var(--green)' : a.strength > 40 ? 'var(--yellow)' : 'var(--red)';
+  const volSpike = data.volumeRaw > 50000000 ? 'volume-spike' : '';
+  
+  return `
+  <div class="coin-card" id="card-${data.symbol}">
+    <button class="delete-btn" onclick="removeCoin('${data.symbol}')">✕</button>
+    <div class="coin-header">
+      <div>
+        <div class="coin-name">${data.symbol}</div>
+        <div style="font-size:11px;color:#8b949e;margin-top:2px;">
+          <span class="status-dot ${wsConnected?'status-live':'status-off'}"></span>
+          ${wsConnected?'即時連線中':'REST輪詢中'}
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div class="coin-price ${up?'price-up':'price-down'}">$${data.price}</div>
+        <span class="coin-change ${up?'change-up':'change-down'}">${up?'+':''}${data.changePct}%</span>
+      </div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">24H 成交量</div><div class="metric-value ${volSpike}">${data.volume}</div></div>
+      <div class="metric"><div class="metric-label">拉盤力度</div><div class="metric-value" style="color:${sc}">${a.strength}/100</div><div class="strength-bar"><div class="strength-fill" style="width:${a.strength}%;background:${sc}"></div></div></div>
+      <div class="metric"><div class="metric-label">買單深度</div><div class="metric-value" style="color:var(--green)">${depth.bidDepth||'--'}</div></div>
+      <div class="metric"><div class="metric-label">賣單深度</div><div class="metric-value" style="color:var(--red)">${depth.askDepth||'--'}</div></div>
+    </div>
+    <div class="signal-box ${a.cls}">${a.text}</div>
+    ${a.signal==='buy'||a.signal==='buy_weak'||a.signal==='hold'?`
+    <div class="tp-sl">
+      <div class="tp">🎯 止盈1: $${a.tp1}<br><small style="opacity:0.7">止盈2: $${a.tp2}</small></div>
+      <div class="sl">🛑 止損: $${a.sl}</div>
+    </div>`:''}
+  </div>`;
+}
+
+async function updateDisplay(){
+  const list = document.getElementById('coinList');
+  if(COINS.length===0){list.innerHTML='<div class="empty">📭 尚未加入任何幣種<br>在上方輸入幣種開始監控</div>';return;}
+  
+  let html = '';
+  for(const sym of COINS){
+    const ticker = await fetchTicker(sym);
+    const depth = ticker ? await fetchDepth(sym) : {bidDepth:'--',askDepth:'--',bidSum:0,askSum:0};
+    if(ticker){
+      COIN_DATA[sym] = {ticker, depth};
+      html += renderCard(ticker, depth);
+    }else{
+      html += `<div class="coin-card"><div class="coin-name">${sym}</div><div style="color:var(--red);padding:10px;">⚠️ 無法獲取數據，請確認幣種正確</div></div>`;
+    }
+  }
+  list.innerHTML = html;
+  document.getElementById('lastUpdate').textContent = '最後更新: ' + new Date().toLocaleTimeString('zh-TW');
+}
+
+function addCoin(){
+  const input = document.getElementById('coinInput');
+  let sym = input.value.trim().toUpperCase();
+  if(!sym) return;
+  if(!sym.includes('USDT')) sym += 'USDT';
+  if(COINS.includes(sym)){alert('已在監控清單中');return;}
+  COINS.push(sym);
+  input.value = '';
+  saveCoins();
+  updateDisplay();
+}
+
+function removeCoin(sym){
+  const i = COINS.indexOf(sym);
+  if(i>-1){COINS.splice(i,1);saveCoins();updateDisplay();}
+}
+
+// WebSocket 連接 (進階)
+function connectWS(){
+  try{
+    ws = new WebSocket(WEEX_WS);
+    ws.onopen = ()=>{wsConnected=true;updateDisplay();};
+    ws.onclose = ()=>{wsConnected=false;setTimeout(connectWS,5000);};
+    ws.onerror = ()=>{wsConnected=false;};
+  }catch(e){wsConnected=false;}
+}
+
+// 啟動
+loadCoins();
+updateDisplay();
+setInterval(updateDisplay, 5000); // 每5秒輪詢
+connectWS(); // 嘗試 WebSocket
+</script>
+</body>
+</html>
